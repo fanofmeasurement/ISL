@@ -1,0 +1,466 @@
+---
+title: "统计学习导论——介绍"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+
+```{r setup, include=FALSE}
+library("ElemStatLearn")
+set.seed(3)
+```
+
+### 统计学习导论的初步介绍
+
+
+1. 作为R的IDE的RStudio
+
+2. R语言基础回顾
+
+3. 统计学习导论初步
+
+
+---
+
+
+class: center, middle
+
+## 1. 作为R的IDE的RStudio
+
+
+---
+
+### 新建R文件
+
+对于Rstudio，平时最常用的功能就是用它来进行编程或写作，对应的，可以建立两类文件来达成我们的目的:
+- R Script，对应文件后缀名.R;
+- R markdown文件，对应文件后缀名是.Rmd。
+
+
+---
+
+### 包的安装和相关设置
+
+- R和python之所以功能强大，很大原因在于这些语言背靠着开源社区，不断地有开发者发布和更新包，封装到程序包中供人使用。
+    
+- 在Global Options这个选项是指rstudio软件的全局设置，一般需要关心general、appearance、packages等。
+
+
+---
+
+### 界面介绍
+
+左下角窗口：
+    
+- console是r语言指令的控制台，所有在左上角窗口中选中并运行的代码都可以在这里看到，也可以在下面直接输入R的代码；
+- terminal可以向电脑的操作系统发送指令；
+- RMarkdown则反映在rmd文件中生成新的文本文件时后台运行的情况。
+
+
+---
+
+### 界面介绍
+
+右上角窗口:
+    
+- environment: value/vector/matrix/dataframe/list/function
+
+```{r}
+x<-c(1:10)
+y<-log(x)
+A<-data.frame(x,y)
+f<-function(x){
+  x+1
+  }
+
+```
+
+- history
+- connections
+    
+---
+
+### 界面介绍
+
+右下角窗口:
+    
+- plot
+    
+```{r,echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+rm(list = ls())#删除右上角所有对象
+
+#在代码编辑器和control窗口输入下列代码，看看是否会产生如下结果
+set.seed(1)
+e<-rnorm(30)
+x<-c(1:30)
+y<-2+0.75*x+e
+plot(x,y,type = 'p')
+abline(lm(y~x),col='red')
+
+```
+
+---
+
+### 界面介绍
+
+右下角窗口:
+    
+
+- help
+
+```{r,warning=FALSE,message=FALSE}
+# help(lm)
+# example(lm)
+
+```
+
+
+---
+
+
+class: center, middle
+
+## 2. R语言基础回顾
+
+
+---
+
+### R语言基础回顾
+
+
+- R的数据结构
+- 基于对象的编程
+- R的环境
+- R markdown
+
+
+
+---
+
+
+class: center, middle
+
+## 3. 统计学习导论初步
+
+---
+
+### 统计学习导论教材
+
+<center>
+<img src="https://booksrun.com/image-loader/350/https:__m.media-amazon.com_images_I_41pP5+SAv-L.jpg" height="450" align="middle" />
+</center>
+
+
+
+.footnote[作者：Gareth James, Daniela Witten, Trevor Hastie, Robert Tibshirani] 
+
+
+---
+
+第2章主要介绍统计学习的基本技术和概念，这章还包括了一类原理简单却在许多领域运用自如的**最近邻分类**方法。
+
+第3章主要回顾**线性回归**，这是所有回归方法的基础。
+
+第4章讨论了两类重要的分类模型:**逻辑斯谛回归**和**线性判别分析**。
+
+第5章重点介绍**交叉验证**和**自助法**，这些方法可通过估计不同方法的精度选择最优的模型。
+
+第6章提供了一类集经典与现代于一体的线性模型，这些方法是在标准线性回归基础上的改进，包括**逐步变量选择、岭回归、主成分回归、偏最小二乘和lasso 回归**。
+
+第7章首先介绍一类在一元输入变量问题中颇有成效的非线性方法，之后将说明这些方法如何被运用到多于一个输入变量的非线性**可加**模型中。
+
+第8章重点考察树类模型，包括**装袋法**、**提升法**和**随机森林**。
+
+第9章中介绍**支持向量机**，它是一种既可以用于线性分类，也可以用于非线性分类的一组方法
+
+第10章考虑只有输入变量没有输出变量的一类方法，重点讲述**主成分分析**、 $\mit{K}$**均值聚类**和**系统聚类**方法。
+
+
+---
+
+### 统计学习导论课程资源
+
+- [斯坦福大学：统计学习](https://www.bilibili.com/video/BV11t411A7Ym?from=search&seid=12282984735614370936)
+- [ISLR](https://github.com/rghan/ISLR) 
+- [R for Statistical Learning](https://daviddalpiaz.github.io/r4sl/index.html)
+- [An Introduction to Statistical Learning with R ](https://subasish.github.io/pages/ISLwithR/)
+
+
+<center>
+<img src="https://s3.ax1x.com/2021/03/07/6MCBh4.png" width="400" align="middle" />
+</center>
+
+
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 确认前列腺癌的风险因子
+
+
+```{r echo = F, fig.alig = "center"}
+df.prostate = ElemStatLearn::prostate
+
+pairs(df.prostate[, c("lpsa", "lcavol", "lweight", "age", "lbph", "svi", "lcp", "gleason", "pgg45")],
+      col = "blueviolet", cex = .5, cex.axis = .5)
+```
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 区分垃圾邮件
+
+    - 建立一个垃圾邮件过滤器
+    - 57个文本特征
+    - 表格中挑选了一些能够将普通邮件和垃圾邮件区分开来的文本
+
+```{r echo = F}
+df.spam = mlr::spam.task$env$data
+names(df.spam)[52] = "!" # change column name from "charExclamation" to "!"
+spam = colMeans(df.spam[df.spam$type == "spam", -58])
+email = colMeans(df.spam[df.spam$type == "nonspam", -58])
+largest.diff = sort(abs(spam - email), decreasing = TRUE)[4:14]
+knitr::kable(rbind(spam, email)[ ,names(largest.diff)], digits = 2)
+```
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 手写体的识别
+
+```{r Zip-data, echo=F, message=FALSE, warning=FALSE, include=FALSE}
+# The following code is taken from the help file of the zip.train dataset
+# from the R package ElemStatLearn
+findRows <- function(zip, n) {
+  # Find  n (random) rows with zip representing 0,1,2,...,9
+  res = vector(length = 10, mode = "list")
+  names(res) = 0:9
+  ind = zip[,1]
+  for (j in 0:9) {
+    res[[j + 1]] = sample(which(ind == j), n) 
+  }
+  return(res)
+}
+
+digits = vector(length = 10, mode = "list")
+names(digits) = 0:9
+rows = findRows(zip.train, 6)
+for (j in 0:9) {
+    digits[[j+1]] = do.call("cbind", lapply(as.list(rows[[j+1]]), 
+                            function(x) zip2image(zip.train, x)))
+}
+im = do.call("rbind", digits)
+```
+
+```{r echo=FALSE, fig.asp = 1}
+image(im, col = gray(256:0/256), zlim = c(0,1), xaxt = 'n', yaxt = 'n')
+```
+
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 收入和人口学变量之间的关系
+
+```{r echo = FALSE, message= FALSE, warning=FALSE,fig.height=7, fig.width=10}
+library(ISLR)
+library(ggplot2)
+library(MASS)
+
+#Loading Wage dataset
+Wage=ISLR::Wage
+# dim(Wage)
+# names(Wage)
+Age=Wage$age
+Wage_=Wage$wage
+
+par(mfrow=c(1,2))
+plot(Age,Wage_,col='gray',ylim=c(50,300),ylab='Wage')
+smooth<-loess(Wage_ ~ Age, data=Wage) 
+j <- order(Age)
+lines(Age[j],smooth$fitted[j],col="red",lwd=3)
+scatter.smooth(Wage_ ~ Age, span = 2/4, degree = 2,col='gray',lwd=3) #Another way
+
+```
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 收入和人口学变量之间的关系
+
+```{r echo = FALSE, message= FALSE, fig.height=7, fig.width=10}
+par(mfrow=c(1,2))
+Year=Wage$year
+plot(Year,Wage_,col='gray',ylim=c(50,300),ylab='Wage')
+abline(lm(Wage_ ~ Year,data=Wage),col='blue',lwd=3)
+Education=Wage$education
+boxplot(Wage_~Education,data=Wage, main="Boxplot of Education vs Wage",
+        xlab="Education level", ylim=c(50,300),ylab="Wage",col=c(2,3,4,5,6))
+```
+
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 股指变化的情况
+
+    - 一个股票市场数据集（Smarket），该数据集收集了2001年至2005年间5年期的标准普尔500股票指数每日股指变动数据。
+    - 这个数据的目标是用过去5天指数的变动比例预测5天后股指的涨跌状态。
+    
+    
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+#Obtaining Figure 1.2
+library(ISLR)
+library(ggplot2)
+library(MASS)
+#Loading Smarket dataset
+Smarket=ISLR::Smarket
+# dim(Smarket)
+# names(Smarket)
+Pchange_Yesterday=Smarket$Lag1
+Pchange_Twodays=Smarket$Lag2
+Pchange_Threedays=Smarket$Lag3
+Direction=Smarket$Direction
+Year=Smarket$Year
+par(mfrow=c(1,3))
+boxplot(Pchange_Yesterday~Direction,data=Smarket, main="Yesterday. S&P500",
+        xlab="Today?s direction", ylim=c(-4,6),ylab="Percentage change in S&P",col=c(4,2))
+boxplot(Pchange_Twodays~Direction,data=Smarket, main="Two days ago. S&P500",
+        xlab="Today?s direction", ylim=c(-4,6),ylab="Percentage change in S&P",col=c(4,2))
+boxplot(Pchange_Threedays~Direction,data=Smarket, main="Three days ago. S&P500",
+        xlab="Today?s direction", ylim=c(-4,6),ylab="Percentage change in S&P",col=c(4,2))
+
+```
+
+
+
+
+
+---
+
+### 统计学习的一些应用场景
+
+- 癌细胞的基因表达
+
+    - 包含了64个癌症细胞系6830个基因表达测量数据
+    - 在基因表达测量上的细胞系数据中看是否有集群存在，称这类问题为**聚类**(clustering)问题
+    - 变量z1和z2是数据中的前两个**主成分**(principal component)，综合了各个细胞系6830个基因表达测量信息。
+
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+
+library(ISLR)
+library(ggplot2)
+library(MASS)
+
+par(mfrow=c(1,2))
+Cols=function(vec){
+  cols=rainbow(length(unique(vec)))
+  return(cols[as.numeric(as.factor(vec))])
+}
+
+figure1_4_left2<-read.csv(file="C:/Users/LEEFe/OneDrive/LECTURES/2021-spr/sl/ref/R-code-for-figures-learning-statistical-learning-master/COPY1_OF_figure1_4_islr.csv",header=T,sep=',',dec='.')
+
+#Obtaining figure 1.4 left panel
+plot(figure1_4_left2[,1:2],col=Cols(figure1_4_left2[,3]), pch=19, xlab="Z1", ylab="Z2",main='NCI60 in R2')
+
+#Obtaining figure 1.4 right panel
+nci.data=NCI60$data
+nci.labs=NCI60$labs
+# dim(nci.data)
+pr.out=prcomp(nci.data, scale=TRUE)
+# names(pr.out)
+# dim(pr.out$x)
+plot(pr.out$x[,1:2], col=Cols(nci.labs), pch=19, xlab="Z1", ylab="Z2")
+
+```
+
+
+
+---
+
+### 有监督学习
+
+
+- 对结果Y进行测量
+    
+    - Y如果是连续的，就是一个**回归问题**
+    - Y如果不连续，就是要给**分类问题**
+
+- 对预测变量X进行了测量
+
+- 有训练数据
+
+    - 对测试数据进行预测
+    - 理解哪些X影响了结果以及如何影响的
+    - 评估预测和推论的质量
+    
+    
+
+---
+
+### 无监督学习
+
+
+- 没有对结果Y进行测量
+
+- 目标更模糊
+
+    - 找到相似的case
+    - 找到相似的特征
+    - 找到变异最大的特征组合
+    - ......
+
+- 更难判断结果是否好
+
+
+
+---
+
+### 统计学习和机器学习
+
+**cross-fertilization**
+
+- 在有监督和无监督学习方面有重叠，而且区分很模糊
+
+    - 机器学习追求大范围的应用和**预测的准确**
+    - 统计学习更强调模型的**可解释性**，精确和不确定性
+    - 在市场上，机器学习胜出
+    
+    
+    
+    
+
+
+

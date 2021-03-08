@@ -1,0 +1,571 @@
+---
+title: "R的数据组织之一"
+author: "李峰"
+date: "2019年3月"
+output:
+  html_document: 
+    number_sections: yes
+    theme: lumen
+    toc: yes
+    toc_depth: 5
+---
+
+
+
+
+## 工作目录
+
+获取工作目录
+
+```{r}
+getwd()
+```
+
+
+修改工作目录
+
+```{r}
+# setwd("")
+```
+
+
+
+
+
+
+
+
+# R的数据对象
+
+
+|  | 同质 | 异质 |
+| :------: | :------: | :------: |
+| 1维 | 原子向量 | 列表 |
+| 2维 | 矩阵 | 数据框 |
+| n维 | 数组 |  |
+
+
+
+## 向量
+
+
+### 原子向量
+
+四种常见的原子向量：
+
++ 逻辑型(logical)
++ 整型(integer)
++ 双精度型(double | numeric)
++ 字符型(character)
+
+
+#### 通常使用**c()**来构建原子向量
+
+**c**是**combine**的缩写。
+
+```{r}
+dbl_var <- c(1, 2.5, 4.5)
+# With the L suffix, you get an integer rather than a double
+int_var <- c(1L, 6L, 10L)
+# Use TRUE and FALSE (or T and F) to create logical vectors
+log_var <- c(TRUE, FALSE, T, F)
+chr_var <- c("these are", "some strings")
+```
+
+#### 即使嵌套，原子向量也是被展开的
+
+
+```{r}
+c(1, c(2, c(3, 4)))
+```
+
+```{r}
+c(1, 2, 3, 4)
+```
+
+#### 向量的类型
+
+使用typeof()或者is类函数：
+
++ is.logical()
++ is.integer()
++ is.double()
++ is.character()
+  
+
+```{r}
+int_var <- c(1L, 6L, 10L)
+typeof(int_var)
+```
+
+
+```{r}
+is.integer(int_var)
+```
+
+```{r}
+is.atomic(int_var)
+```
+
+
+
+```{r}
+dbl_var <- c(1, 2.5, 4.5)
+typeof(dbl_var)
+```
+
+
+```{r}
+is.double(dbl_var)
+```
+
+
+```{r}
+is.atomic(dbl_var)
+```
+
+
+**is.numeric()不是专门用于判断double类型的**
+
+```{r}
+is.numeric(int_var)
+```
+
+
+```{r}
+is.numeric(dbl_var)
+```
+
+
+#### 强制转换
+
+原子向量要求所有的元素必须是同一个类型，如果不同类型的数据结合为一个向量，会被强制转换(coerce)为最灵活的数据类型。
+
+
+灵活性排序：
+
+**character > double > integer > logical**
+
+
+```{r}
+str(c("a", 1))
+```
+
+数学函数一般会把数据coerce为double或interger，逻辑元素符会把数据转换为logical的。
+
+
+但是，coerce有时会带来数据丢失，这时应进行显式强制转换：
+
++ as.character()
++ as.double()
++ as.integer()
++ as.logical()
+
+```{r}
+x <- c(FALSE, FALSE, TRUE)
+as.numeric(x)
+```
+
+```{r}
+sum(x)
+mean(x)
+```
+
+
+### 列表
+
+
+
+#### 列表是使用**list()**创建的。
+
+```{r}
+x <- list(1:3, "a", c(TRUE, FALSE, TRUE), c(2.3, 5.9))
+str(x)
+```
+
+#### 向量都是被展开的，而一个列表可以包含其他列表，所以列表也被称为递归(recursive)向量。
+
+```{r}
+x <- list(list(list(list())))
+str(x)
+```
+
+```{r}
+is.recursive(x)
+```
+
+
+#### 如果原子向量和列表结合一起，c()会强制将向量转换为列表，再结合一起。
+
+
+```{r}
+x <- list(list(1, 2), c(3, 4))
+y <- c(list(1, 2), c(3, 4))
+```
+
+
+```{r}
+str(x)
+str(y)
+```
+
+
+#### 类型及转换
+
++ typeof()
++ is.list()
++ as.list()
++ unlist()
+
+
+#### R中常用list构建复杂的数据结构
+
+
+```{r}
+mtcars
+```
+
+
+
+```{r}
+is.list(mtcars)
+```
+
+```{r}
+mod <- lm(mpg ~ wt, data = mtcars)
+summary(mod)
+```
+
+```{r}
+str(mod)
+```
+
+```{r}
+is.list(mod)
+```
+
+
+
+
+### 属性(attribution)
+
+
+#### 属性是一种从外部附加到对象上的，可被视为某种"标签"。
+
+```{r}
+y <- 1:10
+attr(y, "my_attribute") <- "This is a vector"
+attr(y, "my_attribute")
+```
+
+
+```{r}
+str(attributes(y))
+```
+
+
+
+```{r}
+structure(1:10, my_attribute = "This is a vector")
+```
+
+#### 对象的属性不继续存在于对象的元素或运算结果上
+
+```{r}
+attributes(y[1])
+```
+
+
+```{r}
+attributes(sum(y))
+```
+
+#### 三种重要的属性
+
++ name: names(x)
++ dimension: dim(x)
++ class: class(x)
+
+
+
+### name
+
+#### 直接命名
+```{r}
+x <- c(a = 1, b = 2, c = 3)
+names(x)
+```
+
+
+#### 修改
+```{r}
+x <- 1:3
+names(x) <- c("a", "b", "c")
+names(x)
+```
+
+#### 复制向量并改名
+
+```{r}
+x <- setNames(1:3, c("a", "b", "c"))
+names(x)
+```
+
+
+#### 并不是每个元素都有名字，即使有名字也可以去掉
+
+
+```{r}
+names(x)<-NULL
+names(x)
+```
+
+
+### 因子(factor)
+
+属性的一个重要应用是定义因子，因子是只能包含预先定义值的向量，常用于存储分类数据，如：
+
++ 大学的年级
++ 性别
++ 民族
++ 学历
++ ......
+
+
+
+
+```{r}
+x <- factor(c("a", "b", "b", "a"))
+```
+
+
+#### 因子是建立在integer vector之上的，有两个属性：class()和level()。
+
++ class()把factor和integer区分开来，可以把factor理解为整型向量里的每个元素加上了name，并且用name表示integer。
++ levels()则定义因子所有可能的取值
+
+```{r}
+x <- factor(c("a", "b", "b", "a"))
+x
+y <- as.integer(x)
+y
+z <- as.character(x)
+z
+```
+
+
+```{r}
+levels(x)
+```
+
+```{r}
+sex_char <- c("m", "m", "m")
+sex_factor <- factor(sex_char, levels = c("m", "f"))
+levels(sex_factor)
+table(sex_char)
+```
+
+
+
+
+#### 不能增加factor里没有的level
+
+
+```{r}
+x[2] <- "c"
+```
+
+#### factor不能合并
+
+```{r}
+c(factor("a"), factor("b"))
+```
+
+
+
+#### 读取数据时，factor可能给你带来困扰
+
+
+有时候，一列数值变量可能被读取为factor的，可能时因为其中有字符。需要先将factor转成字符，然后再转成双精度。
+
+
+```{r}
+x <- factor(c("1982", "1988", "1990", "1994"))
+x
+y <- as.integer(x)
+y
+z <- as.character(x)
+z
+a <- as.integer(as.character(x))
+a
+```
+
+
+### 练习
+
+以下运行的结果是什么？
+
++ c(1,FALSE) 
++ C("a",1)
++ c(list(1),"a")
++ c(TRUE, 1L)
++ 1 == "1"
++ -1 < FALSE
++ "one" < 2
+
+
+
+
+## 矩阵和数组
+
+给一个原子向量添加dim()后，它就像多维数组了，其中特例就是矩阵，矩阵是二维的。
+
+```{r}
+a <- matrix(1:6, ncol = 3, nrow = 2)
+b <- array(1:12, c(2, 3, 2))
+c <- 1:6
+dim(c) <- c(3, 2)
+```
+
+
+```{r}
+a
+b
+c
+```
+
+```{r}
+dim(c) <- c(2, 3)
+c
+```
+
+
+
+### 矩阵和数组的dim()
+
+```{r}
+length(a)
+nrow(a)
+ncol(a)
+```
+
+
+```{r}
+length(b)
+dim(b)
+```
+
+
+### 矩阵和数组的names()
+
+
+```{r}
+rownames(a) <- c("A", "B")
+colnames(a) <- c("a", "b", "c")
+a
+```
+
+
+```{r}
+dimnames(b) <- list(c("one", "two"), c("a", "b", "c"), c("A", "B"))
+b
+```
+
+### 常用操作
+
+
++ cbind()
++ rbind()
++ t()
++ is.matrix()
++ is.array()
++ as.matrix()
++ as.array()
+
+
+## 数据框
+
+
+数据框是由相同长度的向量构成的列表。
+
+
+### 数据框构建
+
+
+```{r}
+df <- data.frame(x = 1:3, y = c("a", "b", "c"))
+str(df)
+```
+
+**数据框默认把character转成factor**
+
+
+```{r}
+df <- data.frame(
+  x = 1:3,
+  y = c("a", "b", "c"),
+  stringsAsFactors = FALSE)
+str(df)
+```
+
+
+
+
+### type and coerce
+
+
+```{r}
+typeof(df)
+```
+
+```{r}
+class(df)
+is.data.frame(df)
+```
+
+
+
+
+### combining data frames
+
++ cbind: number of rows must be same
++ rbind: number and names of rows must be same 
+
+```{r}
+cbind(df, data.frame(z = 3:1))
+```
+
+
+```{r}
+rbind(df, data.frame(x = 10, y = "z"))
+```
+
+
+** cbind() can not create a dataframe** 
+
+```{r}
+bad <- cbind(a = 1:2, b = c("a", "b"))
+class(bad)
+```
+
+
+
+```{r}
+good <- data.frame(cbind(a = 1:2, b = c("a", "b")))
+class(good)
+str(good)
+```
+
+
+
+
+### 练习
+
++ as.matrix()如果应用到一个列类型不同的数据框上会怎么样？
++ 有没有行数为0的数据框？有没有列数为0的数据框？
+
+
+
+
+
+
