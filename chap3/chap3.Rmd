@@ -1,0 +1,279 @@
+
+
+---
+title: "线性回归"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+
+```{r setup, include=FALSE}
+library("ElemStatLearn")
+library("mlr")
+library("ggplot2")
+library("ISLR")
+library("ggplot2")
+library("MASS")
+require("plotly")
+library("plotly")
+set.seed(3)
+```
+
+### 线性回归
+
+
+1. 简单线性回归
+
+2. 多元线性回归
+
+3. 回归模型中的注意事项
+
+4. 回归模型和KNN的比较
+
+
+
+---
+
+
+class: center, middle
+
+## 1. 简单线性回归
+
+
+
+---
+
+### 简单线性回归
+
+函数形式：
+
+$$ y = \beta_0 + \beta_1 x + \varepsilon $$
+最小二乘法得到系数的估计值：
+
+$$
+\begin{align}
+  \hat{\beta}_0 &= \bar{y} - \hat{\beta}_1 \bar{x} \label{beta0} \\
+  \hat{\beta}_1 &= \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}
+                        {\sum (x_j - \bar{x})^2}
+\end{align}
+$$
+
+
+
+
+---
+
+### 简单线性回归
+
+广告数据集中，以OLS方法拟合sales对TV的回归
+
+```{r echo = FALSE, message= FALSE, fig.height=6, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+# plot(Tv,Sales,pch=19,col='red')
+# plot(Radio,Sales,pch=19,col='red')
+# plot(Radio,Sales,pch=19,col='red')
+#dev.off()
+#plot(Newspaper,Sales,pch=19,col='red')
+t1 <- ggplot(Advertising, aes(Tv,Sales,color='red')) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE, colour="purple")
+t1
+```
+
+
+
+
+
+
+---
+
+### 简单线性回归
+
+评估模型的准确性
+
+- R方
+
+$$ R^2 = \frac{TSS - RSS}{TSS} $$
+
+- 总的和方
+
+$$ TSS = \sum (y_i - \bar{y})^2 \label{TSS} $$
+- 残差平方和
+
+$$ RSS = \sum (y_i - \hat{y}_i)^2 \label{RSS} $$ 
+
+
+
+---
+
+### 简单线性回归
+
+残差平方和和系数的关系
+
+
+<center>
+<img src="
+https://s3.ax1x.com/2021/03/07/6MCXE8.png
+" height="350" align="middle" />
+</center>
+
+
+
+
+---
+
+### 简单线性回归
+
+总体回归线和样本回归线间关系是统计量和参数的关系
+
+
+<center>
+<img src="
+https://s3.ax1x.com/2021/03/07/6MCqDP.png
+" height="350" align="middle" />
+</center>
+
+
+
+
+---
+
+### 简单线性回归
+
+回忆：均值的标准误
+
+$$SE(\hat{\mu})^2 = \frac{\sigma^2}{n}$$
+
+回归模型中截距的标准误：
+
+$$SE(\hat{\beta_0})^2=\sigma^2 [\frac{1}{n}+\frac{\bar{x}^2}{\sum_{i=1}^n(x_i-\bar{x})^2}]$$
+
+斜率的标准误：
+
+$$SE(\hat{\beta_1})^2=\sigma^2\frac{1}{\sum_{i=1}^n(x_i-\bar{x})^2}$$
+残差方差（对简单回归来说）
+
+$$\sigma^2 = \frac{RSS}{n-2}$$
+
+
+
+---
+
+### 简单线性回归
+
+ $\beta_0$的置信区间：
+ 
+ $$\hat{\beta}_0 = 2*SE(\hat{\beta_0})$$
+ $\beta_1$的置信区间：
+ 
+ $$\hat{\beta}_1 = 2*SE(\hat{\beta_1})$$
+假设检验：
+
+$$t = \frac{\hat{\beta}_1-0}{SE(\hat{\beta_1})}$$
+
+
+---
+
+### 简单线性回归
+
+实例的结果：
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+
+fit1 = lm(Sales~Tv)
+summary(fit1)
+```
+
+
+---
+
+### 简单线性回归
+
+实例的结果：
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+
+fit1 = lm(Sales~Tv)
+anova(fit1)
+
+```
+
+
+---
+
+### 简单线性回归
+
+相关性
+
+$$
+\begin{align}
+  corr(x, y) &= \frac{\sum (x_i - \bar{x}) (y_i - \bar{y})}
+                     {\sigma_x \sigma_y} \\
+  \sigma_x^2 &= \sum (x_i - \bar{x})^2 \\
+  \sigma_y^2 &= \sum (y_i - \bar{y})^2
+\end{align}
+$$
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+
+r <- cor(Sales,Tv)
+r
+r^2
+
+```
+
+
+   
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
