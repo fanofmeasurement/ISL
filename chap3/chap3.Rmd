@@ -58,14 +58,78 @@ class: center, middle
 
 
 
+
+---
+
+### 线性回归
+
+$$Y=f(X)+\epsilon$$
+
+- 线性：广告数据集
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+par(mfrow=c(1,3))
+# plot(Tv,Sales,pch=19,col='red')
+# plot(Radio,Sales,pch=19,col='red')
+# plot(Radio,Sales,pch=19,col='red')
+#dev.off()
+#plot(Newspaper,Sales,pch=19,col='red')
+t1 <- ggplot(Advertising, aes(Tv,Sales,color='red')) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE, colour="purple")
+t2 <- ggplot(Advertising, aes(Radio,Sales,color='red')) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE, colour="purple")
+t3 <- ggplot(Advertising, aes(Newspaper,Sales,color='red')) + 
+  geom_point(color='red') +
+  geom_smooth(method = "lm", se = FALSE, colour="purple")
+
+gridExtra::grid.arrange(t1, t2, t3, nrow = 1, ncol = 3)
+
+```
+
+
+
+---
+
+### 线性回归
+
+看到这个数据我们会有以下问题：
+
+- 广告预算和销售额之间是否有关系？
+
+- 广告预算和销售额之间的关系有多强烈？
+
+- 哪个媒体对销售额的贡献大？
+
+- 广告投放对销售额的预测有多准确？
+
+- 广告和销售额之间关系是否线性的？
+
+- 广告媒体之间是否有协同关系？
+
+
+
+
 ---
 
 ### 简单线性回归
 
-函数形式：
+- 有监督学习的最简单形式，但是在概念和实践上都非常有价值
+
+- 真实的函数永远都不会是线性的
+
+- 函数形式：
 
 $$ y = \beta_0 + \beta_1 x + \varepsilon $$
-最小二乘法得到系数的估计值：
+- 最小二乘法得到系数的估计值：
 
 $$
 \begin{align}
@@ -75,7 +139,9 @@ $$
 \end{align}
 $$
 
+- 可以使用估计得到的系数预测销售额;
 
+$$ \hat{y} = \hat{\beta}_0 + \hat{\beta}_1 x$$
 
 
 ---
@@ -106,6 +172,20 @@ t1
 
 
 
+---
+
+### 简单线性回归
+
+- 残差
+
+$$ e_i = y_i - \hat{y}_i$$
+
+- 残差平方和
+
+$$RSS = e_1^2 + e_2^2 + ...+e_n^2$$
+
+
+$$RSS = (y_1-\hat{\beta}_0-\hat{\beta_1}x_1)^2 + (y_2-\hat{\beta}_0-\hat{\beta_1}x_2)^2 + ...+(y_n-\hat{\beta}_0-\hat{\beta_1}x_n)^2$$
 
 
 ---
@@ -186,14 +266,16 @@ $$\sigma^2 = \frac{RSS}{n-2}$$
 
  $\beta_0$的置信区间：
  
- $$\hat{\beta}_0 = 2*SE(\hat{\beta_0})$$
+ $$\beta_0 = \hat{\beta}_0 +2*SE(\hat{\beta_0})$$
  $\beta_1$的置信区间：
  
- $$\hat{\beta}_1 = 2*SE(\hat{\beta_1})$$
-假设检验：
+ $$\beta_1 = \hat{\beta}_1+2*SE(\hat{\beta_1})$$
+- 假设检验：
 
 $$t = \frac{\hat{\beta}_1-0}{SE(\hat{\beta_1})}$$
+- 如果 $H_0$为真，则：
 
+$$y=\beta_0+\epsilon$$
 
 ---
 
@@ -269,6 +351,159 @@ r^2
 ```
 
 
+
+---
+
+
+class: center, middle
+
+## 2. 多元线性回归
+
+
+
+---
+
+
+### 多元线性回归
+
+- 函数形式：
+
+$$ y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... +\beta_p x_p +\epsilon $$
+
+
+- 对广告的数据集来说：
+
+$$sales = \beta_0 + \beta_1 \times TV + \beta_2 \times radio +\beta_3 \times newspaper + \varepsilon $$
+
+
+
+
+---
+
+### 多元线性回归
+
+- 预测变量间无关：平衡设计（balanced design）
+
+    - 如果预测变量间不相关，每个系数都可以单独的估计和检验
+    - 可以解释为当其他预测变量不变的时候，当 $x_j$变化一个单位，因变量变化 $\beta_j$个单位。
+    
+- 预测变量间相关
+
+    - 系数方差会增大，出现共线性问题
+    - 对系数的解释会变得含糊其辞，当 $x_j$变化的时候，一切都在变化
+
+- 在观测数据上不要做因果推论
+  
+    -  不要仅仅根据数据做因果推论
+    
+
+
+---
+
+### 多元线性回归
+
+*“Data Analysis and Regression” Mosteller and Tukey 1977*
+
+- 尽管我们希望回归系数都可以单独解释，但是预测变量通常是一起变化的
+
+- 例子：
+> 因变量是足球运动员某个赛季的铲球数，自变量是这个球员的身高和体重，得到一个回归模型：
+
+$$ \hat{y} = b_0 +.50W-.10H$$
+如何解释 $\beta_2$？
+
+- **所有的模型都是错的，但是有些是有用的！**
+
+
+---
+
+### 多元线性回归
+
+*“Data Analysis and Regression” Mosteller and Tukey 1977*
+
+- 尽管我们希望回归系数都可以单独解释，但是预测变量通常是一起变化的
+
+- 例子：
+> 因变量是足球运动员某个赛季的铲球数，自变量是这个球员的身高和体重，得到一个回归模型：
+
+$$ \hat{y} = b_0 +.50W-.10H$$
+如何解释 $\beta_2$？
+
+- **对复杂系统来说，唯一可以确定发生了什么的方法是对它进行干预，而不是只是被动的观察！**
+
+
+
+
+---
+
+### 多元线性回归
+
+
+- 预测值
+
+$$\hat{y} = \hat{\beta_0} + \hat{\beta}_1x_1 + \hat{\beta}_2x_2 + ... + \hat{\beta}_px_p$$
+
+- RSS 
+
+$$
+\begin{aligned}
+RSS &= \sum_{i=1}^n(y_i-\hat{y}_i)^2\\
+    &= \sum_{i=1}^n(y_i-\hat{\beta_0} - \hat{\beta}_1x_{i1} - \hat{\beta}_2x_{i2} - ... - \hat{\beta}_px_{ip})^2\\
+\end{aligned}
+$$
+
+
+
+---
+
+### 多元线性回归
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+
+fit1 = lm(Sales~Tv + Radio + Newspaper)
+summary(fit1)
+
+```
+
+
+
+---
+
+### 多元线性回归
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+Sales=Advertising$sales
+Tv=Advertising$TV
+Radio=Advertising$radio
+Newspaper=Advertising$newspaper
+
+fit1 = lm(Sales~Tv + Radio + Newspaper)
+anova(fit1)
+
+```
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
+# head(Advertising)
+
+cor(Advertising[,2:5])
+```
    
 ---
 
