@@ -1,0 +1,128 @@
+---
+title: "Chapter There"
+author: "ZXH0183625"
+date: "2021/4/9"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Q8
+```{r}
+library(ISLR)
+auto = Auto
+```
+### a)
+```{r}
+fit1 = lm(mpg ~ horsepower, auto)
+summary(fit1)
+predict(fit1, data.frame(horsepower=c(98)), interval="confidence")
+```
+p值<0.001,horsepower和mpg呈显著负相关。当马力为98时，油耗预测值为24.46708，置信区间为[23.97308,24.96108]。
+
+### b)
+```{r}
+plot(auto$horsepower, auto$mpg,  
+     xlab="horsepower", 
+     ylab="mpg") 
+abline(fit1)
+```
+### c)
+```{r}
+plot(fit1)
+```
+由残差图与拟合图可以看出，残差和估计值有关，模型不满足线性性，可能需加入二次项。
+由Q-Q正态图可以看出,残差基本符合正态分布。
+由方差图可以看出，满足同方差性假设。
+
+
+## Q9
+
+### a)
+```{r}
+pairs(auto)
+```
+
+### b)
+```{r}
+cor(auto[, 1:8])
+```
+
+### c)
+```{r}
+fit2 = lm(mpg ~ cylinders + displacement + horsepower + weight + 
+            acceleration + year + origin, data = auto)
+summary(fit2)
+```
+有关系，mpg和displacement,weight,year,orgin显著相关。
+year变量的系数为0.750773，说明year（车龄）每增加一个单位（年），汽车的mpg（油耗）增加约0.75个单位。
+
+### d)
+```{r}
+plot(fit2)
+```
+有离群值点（标准化残差绝对值大于2的点）。
+有高杠杆值点14。
+没有强影响点。
+
+### e)
+```{r}
+fit3 = lm(mpg ~ horsepower * weight, data = auto)
+summary(fit3)
+```
+p值<0.001，horsepower与weight存在统计显著的交互作用。
+
+### f)
+```{r}
+fit4 = lm(mpg ~ log(horsepower) * weight, data = auto)
+summary(fit4)
+fit5 = lm(mpg ~ I(horsepower^2) * weight, data = auto)
+summary(fit5)
+fit6 = lm(log(mpg) ~ horsepower * weight, data = auto)
+summary(fit6)
+```
+结果表明，尝试对horsepower进行对数和平方变换，调整R方显示，拟合效果并没有显著提高，甚至效果变得更差。但对mpg响应变量进行对数变换，调整R方增大，拟合效果有所提高。
+
+## Q10)
+```{r}
+library(ISLR)
+carseats = Carseats
+```
+
+### a)
+```{r}
+fit7 = lm(Sales ~ Price + Urban + US, data = carseats)
+summary(fit7)
+```
+### b)
+Price的系数表明，价格每增加一个单位，销售量降低-0.054459个单位。
+UrbanYes的系数表明，在城市的销量较低，比在农村的销量低0.021916。
+USYes的系数表明，在美国商店的销量较高，比不在美国的商店销量高1.200573。
+
+### c)
+Sales = -0.054459 * Price + -0.021916 * Urban + 1.200573 * US + 13.043469
+其中：若在城市商店销售，Urban=1；否则Urban=0。若在美国商店销售，US=1；否则US=0。
+
+### d)
+Price和USYes
+
+### e)
+```{r}
+fit8 = lm(Sales ~ Price + US, data = carseats)
+summary(fit8)
+```
+
+### f)
+e中的模型对数据拟合更好。
+
+### g)
+```{r}
+confint(fit8)
+```
+
+### h)
+```{r}
+plot(fit8)
+```
+有离群点和高杠杆值点。
