@@ -1,0 +1,173 @@
+---
+title: "U3 Homework "
+author: "0183597 柏亦琳"
+date: "2021/4/8"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 第八题
+### (a)
+
+```{r }
+#打开数据集Auto,数据集中的问号设置为缺失值
+Auto=read.csv('C:/Users/HP/Desktop/Auto.csv',header=T,na.strings="?")
+#数据预处理，将Auto中的缺失变量删除
+Auto = na.omit(Auto)
+#用lm函数线性回归并用summary函数描述结果
+attach(Auto)
+lm.fit = lm(mpg ~ horsepower)
+summary(lm.fit)
+
+```
++ Ⅰ.根据输出结果，F-statisticz值为599.7，且horsepower线性回归后的P值非常小，因此在显著性水平为0.001下，我们认为horsepower与mpg存在明显关系。
++ Ⅱ.对于horsepower与mpg之间的关系强弱，我们可以看见本次拟合的残差平方和约为0.6，这说明约有60%的mpg可以被horsepower解释。
++ Ⅲ.horsepower与mpg之间是负相关关系，因为horsepower的回归系数是-0.157845＜0。
++ Ⅳ.当horsepower是98时带回预测函数中，有如下代码，可以看出预测值是24.46708，95%置信区间为[23.97308,24.96108],95%预测区间为[14.8094, 34.12476]。
+```{r }
+predict(lm.fit, data.frame(horsepower=c(98)), interval="confidence")
+predict(lm.fit, data.frame(horsepower=c(98)), interval="prediction")
+```
+### (b)
+绘制代码以及结果如下
+```{r}
+plot(horsepower, mpg)
+abline(lm.fit)
+```
+
+### (c)
+生成的最小二乘回归拟合诊断图如下：
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
++ 从诊断图结果可以分析出，残差图有明显的凹趋势，说明mpg与horsepower非线性相关，这暗示着我们可能需要对回归模型加上一个二次项，而Q-Q图残差基本正态分布的图，且满足同方差性。
+
+## 第九题
+### (a)
+绘制的所有变量散点图矩阵如下
+```{r}
+pairs(Auto[1:8])
+```
+
+### (b)
+
+用cor函数计算变量之间的相关系数矩阵，排出name，结果如下：
+```{r}
+cor(subset(Auto, select=-name))
+```
+
+### (c)
+
+用lm()函数多元线性回归结果如下
+```{r}
+lm.fit1 = lm(mpg~.-name, data=Auto)
+summary(lm.fit1)
+```
++ Ⅰ.通过F-statistic值为252.4以及p-value: < 2.2e-16可以看出，预测变了和响应变量之间有关系。
++ Ⅱ.通过输出结果可以看出，displacement(0.01), weight(0.001),year(0.001),origin(0.001)这几个预测变量回归结果很显著，他们与和响应变量有显著关系。
++ Ⅲ.year变量系数为正，这说明year与mpg是正正相关，随着year的增加，汽车每加仑行驶的英里数会增加。
+
+### (d)
+
+生成线性回归拟合诊断图如下
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit1)
+plot(predict(lm.fit1), rstudent(lm.fit1))
+```
+
++ 我们分析诊断图，而Q-Q图残差基本正态分布的图，且满足同方差性，从诊断图的右下角图可以看出有一点远远超过了其他点，可能存在高杆点。
+
+### (e)
+
+我们增加有cylinders x displacement，year x origin和displacement x weight交互项的回归，拟合代码如下
+```{r}
+lm.fit2 = lm(mpg~cylinders*displacement+displacement*weight+ year*origin)
+summary(lm.fit2)
+```
+
++ 从回归结果看出，在回归中增加了相乘的交互项后，交互项year x origin和displacement x weight系数是显著的，且此时的残差是2.974,相比没有交互项时有所减少，拟合系数有所增加。
+
+### (f)
+
+对预测变量变换，代码如下：
+```{r }
+lm.fit3 = lm(mpg~log(horsepower)+sqrt(horsepower)+horsepower+I(horsepower^2))
+summary(lm.fit3)
+```
+
++ 加入logx，x^(1/2) , x^2 后，我们看输出的拟合结果，发现他们在0.01下显著，我们输出诊断图如下
+
+```{r}
+par(mfrow=c(2,2))
+  plot(lm.fit3)
+```
+
++ 可以看出，残差和估计值基本是无关的，且残差是否是正态分布的，满足同方差性。
+
+## 第十题
+### (a)
+下载好ISLR包之后，我们加载数据集Carseats，预测代码如下
+```{r}
+library(ISLR)
+summary(Carseats)
+attach(Carseats)
+lm.fit = lm(Sales~Price+Urban+US)
+summary(lm.fit)
+```
+### (b)
+
++ 对于变量price，系数为-0.054459＜0，p值很小，说明价格price与销量成反比关系，价格升高销量会降低。
++ 对于UrbanYes，尽管系数为-0.021916＜0，但它的p值很大，说明不显著，因此我们可以认为UrbanYes与销量无线性关系
++ 对于USYes，系数1.200573＞0，p值很小，说明USYes与销量是正相关系。
+
+### (c)
+根据输出结果我们写出如下方程
++ Sales = 13.04 + -0.05 Price + -0.02 UrbanYes + 1.20 USYes 
+
+### (d)
+
+根据p值和F-statistic，我们可以拒绝变量Priece和USYES的零假设。
+
+### (e)
+由上面分析可知，Urban拟合的p值很大，说明它与Sales无线性关系，将改变量删除后重新拟合代码如下
+```{r}
+lm.fit2 = lm(Sales~Price+US)
+summary(lm.fit2)
+```
+### (f)
+
+根据输出结果
++ (a)Multiple R-squared:  0.239,  Adjusted R-squared:  0.234，
++ (e)Multiple R-squared:  0.239,  Adjusted R-squared:  0.235 
++ a和e的拟合度都在0.2左右，拟合效果都不是很好。
+### (g)
+
+计算95%置信区间代码如下
+```{r}
+confint(lm.fit2)
+```
++ 可以看出Price95%置信区间为[-0.06475984,-0.04419543],USYes95%置信区间为[0.69151957, 1.70776632]
+### (h)
+```{r}
+plot(predict(lm.fit2), rstudent(lm.fit2))
+```
+
++ 从上图可以看出，stuendtize residuals的范围在-3到3之间，所以没有离群点
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit2)
+```
+
++ 从上图可以看出有一些点远远超过了其他点，故可能存在高杆点
+
+
+
