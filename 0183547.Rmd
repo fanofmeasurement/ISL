@@ -1,0 +1,156 @@
+---
+title: '0183547.R'
+author: "DaiHuan Cai"
+date: "2021/4/8"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(survey)
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(beeswarm)
+library(ggbeeswarm)
+library(base)
+library(ISLR)
+```
+
+**8**
+
+```{r}
+data(Auto)
+```
+
+a.
+```{r}
+attach(Auto)
+lm.fit = lm(mpg ~ horsepower)
+summary(lm.fit)
+```
+i.From the summary results,F-statistic is very large and P-value is very small,which dicates that there is a correlation between the two.
+
+ii.From page 54 of the book, we can see that the fitting effect depends on RSE and adjusted R-squared. The adjusted R-squared was 0.6049, which indicated that 60.49% of the Y variation could be explained by X.
+
+iii.According to the fitted parameters,there is a negative correlation.
+
+iv.
+```{r}
+predict(lm.fit, data.frame(horsepower=c(98)), interval="confidence")
+```
+The result was 24.47,and the confidence interval was (23.97, 24.96).
+```{r}
+predict(lm.fit, data.frame(horsepower=c(98)), interval="prediction")
+```
+
+The prediction interval was (14.81,34.12).
+
+b.
+```{r}
+plot(horsepower, mpg)
+abline(lm.fit)
+```
+
+c.
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+**9**
+a.
+```{r}
+pairs(Auto)
+```
+
+b.
+```{r}
+cor(subset(Auto, select=-name))
+```
+
+c.
+```{r}
+lm.fit1 = lm(mpg~.-name, data=Auto)
+summary(lm.fit1)
+```
+i.yes.There are F-statistic and p-value values to judge.
+
+ii.When P-value is less than 0.05,the prediction variables of displacement,weight,year,and origin are significantly related to the response variables.
+
+iii.The coefficient of vehicle age variable is 0.75,which indicates that with the increase of vehicle age,the vehicle will consume more and more fuel.
+
+d.
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit1)
+plot(predict(lm.fit1), rstudent(lm.fit1))
+```
+
+e.
+```{r}
+lm.fit2 = lm(mpg~cylinders*displacement+displacement*weight)
+summary(lm.fit2)
+```
+
+f.
+```{r}
+lm.fit3 = lm(mpg~log(weight)+sqrt(horsepower)+acceleration+I(acceleration^2))
+summary(lm.fit3)
+par(mfrow=c(2,2))
+plot(lm.fit3)
+plot(predict(lm.fit3), rstudent(lm.fit3))
+lm.fit2<-lm(log(mpg)~cylinders+displacement+horsepower+weight+acceleration+year+origin,data=Auto)
+summary(lm.fit2)
+par(mfrow=c(2,2)) 
+plot(lm.fit2)
+plot(predict(lm.fit2),rstudent(lm.fit2))
+```
+
+**10**
+
+a.
+```{r}
+summary(Carseats)
+attach(Carseats)
+lm.fit = lm(Sales~Price+Urban+US)
+summary(lm.fit)
+```
+
+b.
+By summary(lm.fit)Price and us are related to sales,but urban and sales are not.
+
+c.
+Sales = 13.04 + -0.05 * price - 0.02 * urban + 1.20 * us, where urban and us are yes, the value is 1, otherwise it is 0.
+
+d.
+Price and US.
+
+e.
+From the above analysis, we can see that urban has nothing to do with sales, so we can remove this variable.
+```{r}
+lm.fit2 = lm(Sales~Price+US)
+summary(lm.fit2)
+```
+
+f.
+the ultiple R-squared in (a) is 0.239, Adjusted  R-squared:0.234, the ultiple R-squared in (e) is 0.239, Adjusted R-squared:0.235, We can see that the fitting degree of the two is almost the same, and (e) is slightly better.
+
+g.
+```{r}
+confint(lm.fit2)
+```
+
+h.
+```{r}
+plot(predict(lm.fit2), rstudent(lm.fit2))
+```
+From this command, we can see that stuendtize residuals range from - 3 to 3, so there are no outliers.
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit2)
+```
+From the graph obtained by this command, we can see that some points far exceed other points, so there are high pole points.
