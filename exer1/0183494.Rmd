@@ -1,0 +1,105 @@
+---
+title: "Untitled"
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+8、(a)
+```{r}
+library(ISLR)
+Auto = na.omit(Auto)
+summary(Auto)
+attach(Auto)
+lm.fit = lm(mpg ~ horsepower)
+summary(lm.fit)
+```
+i. 有关系
+ii. 相关系数为0.605948 
+iii. 负相关
+iv. 
+```{r}
+predict(lm.fit, data.frame(horsepower=c(98)), interval="confidence")
+predict(lm.fit, data.frame(horsepower=c(98)), interval="prediction")
+```
+(b)
+```{r}
+plot(horsepower, mpg)
+abline(lm.fit)
+```
+(c)
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+9、(a)
+```{r}
+pairs(Auto)
+```
+(b)
+```{r}
+cor(subset(Auto, select=-name))
+```
+(c)
+```{r}
+lm.fit1 = lm(mpg~.-name, data=Auto)
+summary(lm.fit1)
+```
+i. 有关系
+ii. 位移，重量，车龄和原点具有统计上的显着关系，而气缸，马力和加速度则没有统计学意义
+iii. 油耗和车龄成正比
+(d)
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit1)
+```
+(e)
+```{r}
+lm.fit2 = lm(mpg~cylinders*displacement+displacement*weight)
+summary(lm.fit2)
+```
+从p值可以看出，位移和重量之间的相互作用在统计学上是显着的，而圆柱体和位移之间的相互作用则没有统计学意义
+(f)
+```{r}
+lm.fit3 = lm(mpg~log(weight)+sqrt(horsepower)+acceleration+I(acceleration^2))
+summary(lm.fit3)
+```
+
+10、(a)
+```{r}
+summary(Carseats)
+attach(Carseats)
+lm.fit = lm(Sales~Price+Urban+US)
+summary(lm.fit)
+```
+(b)
+Price: 随着价格增加，销售量减少。
+Urban Yes: 商店的位置与销售数量之间没有关系。
+US Yes: 如果商店在美国，则销售量将增加约1201个单位。
+(c)
+Sales = 13.04 - 0.05 Price - 0.02 Urban Yes + 1.20 US Yes
+(d)
+Price、US Yes
+(e)
+```{r}
+lm.fit2 = lm(Sales ~ Price + US)
+summary(lm.fit2)
+```
+(f)
+(e)的线性回归拟合数据则稍好一些
+
+(g)
+```{r}
+confint(lm.fit2)
+```
+(h)
+```{r}
+plot(predict(lm.fit2), rstudent(lm.fit2))
+```
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit2)
+```
+如图,不存在离群点,有高杠杆点
