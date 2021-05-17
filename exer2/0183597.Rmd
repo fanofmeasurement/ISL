@@ -1,0 +1,263 @@
+---
+title: "U4 Homework"
+author: "Yilin Bai"
+date: "2021/5/15"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 第十题
+### (a)
+```{r }
+
+library(ISLR)
+names(Weekly)
+summary(Weekly)#描述统计
+pairs(Weekly)
+cor(Weekly[,-9])#计算相关系数矩阵
+
+
+```
+
++ 可以看出year和volume是强相关关系，而前几日的投资回报变量与当日的回报率之间相关系数很小。可以尝试logistic回归模型
+
+### (b)
++ logistics回归5个lags时间变量和Volume作为预测变量，代码如下：
+```{r }
+attach(Weekly)
+glm.fit=glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, data = Weekly,  family=binomial)
+summary(glm.fit)
+```
++ 这里最小的p值是lag2的0.0296，而其它lag的p值较大，因此存在的显著预测变量是lag2。
++ 只有lag2的系数为正，而lag1、lag3、lag4、lag5的系数均为负数。系数为负，表明如果市场昨天的投资回报率是正的，那么本次市场可能不会上涨。lag2的p值是0.0296，较显著，我们有充分证据表明lag2和Direction之间有确切的关系。
+
+### (c)
+
++ 计算混淆矩阵并分析，代码如下：
+```{r }
+glm.probs = predict(glm.fit, type = "response")
+glm.pred = rep("Down", length(glm.probs))#创建一个与glm.probs长度一致的向量
+glm.pred[glm.probs > 0.5] = "Up" #将上涨概率超过0.5的元素变为up
+table(glm.pred, Direction) #运用table产生混淆矩阵
+mean(glm.pred==Direction)
+
+```
+
++ 根据混淆矩阵含义，该模型正确预测了市场在557星期里上涨，在54个星期里下降，总共557+54=611个星期正确预测。
++ 运用mean函数，我们计算出，该模型正确预测的比例是56.10652%
++ 我们知道混淆矩阵的对角线元素表示预测准确，非对角线元素表示错误预测。混淆矩阵中，有430个星期的真实情况是down，但预测成了up，属于虚报，接受了实际down的元素，是第二类错误。有48个星期实际上是up的，但被预测成了down，属于漏报，拒绝了实际上up的元素，是第一类错误。
+
+### (d)
+
++ lag2作为预测变量并计算混淆矩阵，代码如下：
+```{r }
+train = (Year < 2009)#1990-2008z之间的观测建立数据集
+Weekly.0910 = Weekly[!train, ]
+#logistic回归
+glm.fit = glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = train)
+glm.probs = predict(glm.fit, Weekly.0910, type = "response")
+
+glm.pred = rep("Down", length(glm.probs))
+glm.pred[glm.probs > 0.5] = "Up"
+Direction.0910 = Direction[!train]
+table(glm.pred, Direction.0910)#运用table产生混淆矩阵
+mean(glm.pred == Direction.0910)
+mean(glm.pred != Direction.0910)
+```
++ 通过输出的混淆矩阵可以看出，该模型正确预测了市场在56星期里上涨，在9个星期里下降，总共56+9=65个星期正确预测。
++ 测试结果的正确率是62.5%，错误率是37.5%。就正确率来看，此测试的62.5%优于上一问的56.10652%，结果有所改进
+
+### (e)
+
++ 用LAD重复d的过程，代码如下：
+```{r }
+library(MASS)
+lda.fit = lda(Direction ~ Lag2, data = Weekly, subset = train)
+lda.pred = predict(lda.fit, Weekly.0910)
+table(lda.pred$class, Direction.0910)
+mean(lda.pred$class == Direction.0910)
+```
+
++ 通过输出的混淆矩阵可以看出，该模型正确预测了市场在56星期里上涨，在9个星期里下降，总共56+9=65个星期正确预测。
++ 测试结果的正确率是62.5%，结果与d一致。
+
+### (f)
+
++ 用QDA重复d的过程，代码如下：
+```{r }
+qda.fit = qda(Direction ~ Lag2, data = Weekly, subset = train)
+qda.class = predict(qda.fit, Weekly.0910)$class
+table(qda.class, Direction.0910)
+mean(qda.class == Direction.0910)
+```
+
++ 通过输出的混淆矩阵可以看出，该模型正确预测了市场在61星期里上涨。
++ 测试结果的正确率是58.65%，此结果对比d,e正确率有所下降。
+
+### (g)
+
++ 运用KNN取k=1，代码如下：
+```{r }
+library(class)
+train.X = as.matrix(Lag2[train])
+test.X = as.matrix(Lag2[!train])
+train.Direction = Direction[train]
+set.seed(1)
+knn.pred = knn(train.X, test.X, train.Direction, k = 1)
+table(knn.pred, Direction.0910)
+mean(knn.pred == Direction.0910)
+```
+
++ 通过输出的混淆矩阵可以看出，该模型正确预测了市场31星期里上涨，在21个星期里下降，总共31+21=52个星期正确预测。
++ 测试结果的正确率是50%，此结果对比d,e正确率有所下降，因为k取1，取值小，误差较大。
+
+### (h)
++ 就正确率结果而言，logistic和LDA的方法最好，z这俩种方法正确率均最高，是62.5%。
+### (i)
+logistic含有交互项lag1*lag2的代码如下：
+```{r }
+glm.fit = glm(Direction ~ Lag1:Lag2, data = Weekly, family = binomial, subset = train)
+glm.probs = predict(glm.fit, Weekly.0910, type = "response")
+glm.pred = rep("Down", length(glm.probs))
+glm.pred[glm.probs > 0.5] = "Up"
+Direction.0910 = Direction[!train]
+table(glm.pred, Direction.0910)
+mean(glm.pred == Direction.0910)
+```
++ logistic含有交互项lag1*lag2的正确率为58.65385%。
+
+LAD含交互项lag1*lag2代码如下：
+```{r }
+lda.fit = lda(Direction ~  Lag1:Lag2, data = Weekly, subset = train)
+lda.pred = predict(lda.fit, Weekly.0910)
+table(lda.pred$class, Direction.0910)
+mean(lda.pred$class == Direction.0910)
+```
++ LAD含交互项lag1*lag2的正确率为57.69%。
+
+QDA含有交互项lag1*lag2的代码如下：
+```{r }
+# QDA with sqrt(abs(Lag2))
+qda.fit = qda(Direction ~ Lag1:Lag2 ,data = Weekly,subset = train)
+qda.class = predict(qda.fit, Weekly.0910)$class
+table(qda.class, Direction.0910)
+mean(qda.class == Direction.0910)
+```
++ LAD含交互项lag1*lag2的正确率为43.27%。
+
+KNN算法，k分别取10,50,100结果如下：
+```{r }
+# KNN k =10
+knn.pred = knn(train.X, test.X, train.Direction, k = 10)
+table(knn.pred, Direction.0910)
+mean(knn.pred == Direction.0910)
+# KNN k =50
+knn.pred = knn(train.X, test.X, train.Direction, k = 50)
+table(knn.pred, Direction.0910)
+mean(knn.pred == Direction.0910)
+# KNN k = 100
+knn.pred = knn(train.X, test.X, train.Direction, k = 100)
+table(knn.pred, Direction.0910)
+mean(knn.pred == Direction.0910)
+## [1] 0.5577
+```
++ KNN算法k取10,50,100得到的正确率分别是54.8%，58.65%，56.71%。
+
+综上所述，正确率最高的方法是含有交互项lag1*lag2的logistic回归，和KNN算法k取50两种方法，均得到正确率为58.65385%。
+
+## 第十一题
+
+### (a)
+```{r }
+library(ISLR)
+summary(Auto)
+attach(Auto)
+mpg01 = rep(0, length(mpg))
+mpg01[mpg > median(mpg)] = 1
+Auto = data.frame(Auto, mpg01)
+```
+### (b)
+
+```{r }
+cor(Auto[, -9])
+pairs(Auto)
+boxplot(Auto)
+```
+
++ 通过输出的相关系数矩阵和散点图，我们可以看出cylinders,displacement,horsepower ,weight与mpg01变量有强线性相关关系，acceleration变量与mpg01变量的线性关系较弱。
++ 通过输出结果，我们可以看出displacement与cylinders，weight两个变量之间有很强的线性关系。
+
+### (c)
+将偶数年份记为训练数据集，奇数年份为测试数据集，代码如下：
+```{r }
+train = (year%%2 == 0)  
+test = !train 
+Auto.train = Auto[train, ]
+Auto.test = Auto[test, ]
+mpg01.test = mpg01[test]
+```
+### (d)
+通过第一问分析我们得出变量cylinders,displacement,horsepower ,weight与mpg01变量有强线性相关关系，应用LDA预测如下：
+```{r }
+library(MASS)
+lda.fit = lda(mpg01 ~ cylinders + weight + displacement + horsepower, data = Auto, subset = train)
+lda.pred = predict(lda.fit, Auto.test)
+mean(lda.pred$class != mpg01.test)# ！=，即输出错误率
+```
++ 可以看出用LDA预测的结果较好，错误率仅为12.64%。
+
+### (e)
+应用LDA预测如下:
+```{r }
+qda.fit = qda(mpg01 ~ cylinders + weight + displacement + horsepower, data = Auto, subset = train)
+qda.pred = predict(qda.fit, Auto.test)
+mean(qda.pred$class != mpg01.test)
+
+```
++ 用QDA预测的错误率仅为13.18%，错误率比LDA略高一点。
+
+### (f)
+应用logistic回归如下：
+```{r }
+glm.fit = glm(mpg01 ~ cylinders + weight + displacement + horsepower, data = Auto, family = binomial, subset = train)
+glm.probs = predict(glm.fit, Auto.test, type = "response")
+glm.pred = rep(0, length(glm.probs))
+glm.pred[glm.probs > 0.5] = 1
+mean(glm.pred != mpg01.test)
+
+```
++ 用logistic回归预测的错误率仅为12.08791%，错误率比LDA,QDA的都低。
+
+### (g)
+运用KNN算法，分别取k为1,10,20,50,100进行预测代码与结果如下：
+```{r }
+library(class)
+train.X = cbind(cylinders, weight, displacement, horsepower)[train, ]
+test.X = cbind(cylinders, weight, displacement, horsepower)[test, ]
+train.mpg01 = mpg01[train]
+set.seed(1)
+# k=1
+knn.pred = knn(train.X, test.X, train.mpg01, k = 1)
+mean(knn.pred != mpg01.test)
+# k=10
+knn.pred = knn(train.X, test.X, train.mpg01, k = 10)
+mean(knn.pred != mpg01.test)
+# k=20
+knn.pred = knn(train.X, test.X, train.mpg01, k = 20)
+mean(knn.pred != mpg01.test)
+# k=50
+knn.pred = knn(train.X, test.X, train.mpg01, k = 50)
+mean(knn.pred != mpg01.test)
+# k=100
+knn.pred = knn(train.X, test.X, train.mpg01, k = 100)
+mean(knn.pred != mpg01.test)
+
+```
++ 从上述输出结果可以看出，k取1的错误率是15.385%，k取10的错误率是16.483%，k取20,50,100的错误率一致，均为14.285%。
++ k取到大于20以后，预测结果趋于稳定，预测错误率稳定在14%左右，因此k取20较好。
+
