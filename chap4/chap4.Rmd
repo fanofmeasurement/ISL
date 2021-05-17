@@ -1,0 +1,1475 @@
+
+
+---
+title: "分类问题"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    html_document:
+      mathjax: "http://example.com/MathJax.js"
+---
+
+
+
+```{r setup, include=FALSE, dev="CairoPNG"}
+library("Cairo")
+library("ElemStatLearn")
+library("mlr")
+library("ggplot2")
+library("ISLR")
+library("ggplot2")
+library("MASS")
+require("plotly")
+library("plotly")
+knitr::opts_chunk$set(dev="CairoPNG")
+set.seed(3)
+```
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+```{css, echo = FALSE}
+.math.inline {
+}
+```
+
+
+
+### 分类问题
+
+1. 分类问题大略
+
+2. logistic regression
+
+3. LDA
+
+4. QDA
+
+5. Naive Bayes
+
+
+
+---
+
+class: center, middle
+
+## 1. 分类问题大略
+
+
+
+---
+
+## 分类问题大略
+
+“分类”是“监督学习”的一种形式，其中响应变量是分类。 
+
+**目标是找到一条规则、算法或函数，该规则、算法或函数将特征向量作为输入，并尽可能地输出真实类别的一个类别。**
+
+分类器 $\hat{C}(x)$ 返回预测类别 $\hat{y}(X)$：
+
+$$
+\hat{y}(x) = \hat{C}(x)
+$$
+
+
+---
+
+## 分类问题大略
+
+- 目标是根据学生身份，信用卡余额和收入将个人分类为违约者和非违约者。
+
+- 注意，“默认”是一个factor，预测变量“学生”也是一个factor。
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(ISLR)
+library(tibble)
+head(as_tibble(Default))
+
+```
+
+
+
+---
+## 分类问题大略
+
+
+- 与回归一样，对数据进行测试训练，每个使用50％。
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+set.seed(42)
+default_idx   = sample(nrow(Default), 5000)
+default_trn = Default[default_idx, ]
+default_tst = Default[-default_idx, ]
+
+
+```
+
+
+
+---
+## 分类问题大略
+
+- 可视化
+
+通常，一些简单的可视化可以建议简单的分类规则。 为了快速创建一些有用的可视化，可以使用来自**caret**包的**featurePlot()**函数。
+
+
+
+$$
+\hat{f}_{X_i}(x_i \mid Y = k)
+$$
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(caret)
+featurePlot(x = default_trn[, c("balance", "income")], 
+            y = default_trn$default,
+            plot = "density", 
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")), 
+            adjust = 1.5, 
+            pch = "|", 
+            layout = c(2, 1), 
+            auto.key = list(columns = 2))
+
+
+```
+
+
+
+
+
+---
+## 分类问题大略
+
+- 看来，income并不是特别有用。
+
+- 但是，balance大约为1400时，似乎有在default上不同
+
+- 如果以“ student”作为响应变量，学生的收支平衡经常略大，而收入却低得多，这有助于进行更复杂的分类
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+featurePlot(x = default_trn[, c("balance", "income")], 
+            y = default_trn$student,
+            plot = "density", 
+            scales = list(x = list(relation = "free"), 
+                          y = list(relation = "free")), 
+            adjust = 1.5, 
+            pch = "|", 
+            layout = c(2, 1), 
+            auto.key = list(columns = 2))
+
+
+```
+
+---
+## 分类问题大略
+
+
+- 使用`plot =“ pairs”`同时考虑多个变量。
+
+- 该图增强了使用“平衡”创建分类器的效果，也再次显示“收入”似乎没有那么有用。
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+featurePlot(x = default_trn[, c("student", "balance", "income")], 
+            y = default_trn$default, 
+            plot = "pairs",
+            auto.key = list(columns = 2))
+
+
+```
+
+
+---
+## 分类问题大略
+
+- 做ellipse类型的绘图，需要**ellipse**软件包。
+
+- 这里仅使用数值预测变量，假设预测变量服从多元正态分布。
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+library(ellipse)
+featurePlot(x = default_trn[, c("balance", "income")], 
+            y = default_trn$default, 
+            plot = "ellipse",
+            auto.key = list(columns = 2))
+
+
+```
+
+
+
+
+---
+## 分类问题大略
+
+
+- 一个简单的分类器
+
+
+- 根据前面的图，可以认为使用“ balance”来创建合理的分类器效果会比较好。
+
+- 因此，预测如果个人的“ balance”高于1400，则该个人为违约者；如果1400或以下，则该个人为非违约者。
+
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+simple_class = function(x, boundary, above = 1, below = 0) {
+  ifelse(x > boundary, above, below)
+}
+
+
+```
+
+
+
+---
+## 分类问题大略
+
+- 分类结果：混淆矩阵
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+
+default_trn_pred = simple_class(x = default_trn$balance, 
+                                boundary = 1400, above = "Yes", below = "No")
+default_tst_pred = simple_class(x = default_tst$balance, 
+                                boundary = 1400, above = "Yes", below = "No")
+
+
+
+"训练集上的分类结果"
+
+(trn_tab = table(predicted = default_trn_pred, actual = default_trn$default))
+
+
+"测试集上的分类结果"
+
+(tst_tab = table(predicted = default_tst_pred, actual = default_tst$default))
+
+
+```
+
+
+---
+## 分类问题大略
+
+- TP(True Positive)真正：真实为1，预测也为1
+- FN(False Negative)假负：真实为1，预测为0
+- FP(False Positive)假正：真实为0，预测为1
+- TN(True Negative)真负：真实为0，预测也为0
+
+
+
+![](confusion.png)
+
+
+---
+## 分类问题大略
+
+
+-可以使用`caret`包中的`confusionMatrix()`函数获取信息。
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+library(e1071)
+
+trn_con_mat  = confusionMatrix(trn_tab, positive = "Yes")
+(tst_con_mat = confusionMatrix(tst_tab, positive = "Yes"))
+
+
+```
+
+
+
+
+---
+## 分类问题大略
+
+- 准确率: Accuracy
+
+$$
+\text{Accu} = \frac{1}{n_{\texttt{trn}}}\sum I(y_i = \hat{C}(x_i))
+$$
+
+$$
+\text{Accu}= \frac{1}{n_{\texttt{trn}}}\sum I(y_i = \hat{C}(x_i))
+$$
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+trn_con_mat$overall["Accuracy"]
+tst_con_mat$overall["Accuracy"]
+
+```
+
+
+---
+## 分类问题大略
+
+
+- 精确率: Precision
+
+$$
+\text{Prec} = \frac{\text{TP}}{\text{TP + FP}}
+$$
+
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+tst_con_mat$byClass["Precision"]
+
+```
+
+
+
+---
+## 分类问题大略
+
+
+- 灵敏度: Sensitivity(Recall)
+
+$$
+\text{Sens} = \frac{\text{TP}}{\text{TP + FN}}
+$$
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+tst_con_mat$byClass["Sensitivity"]
+
+```
+
+
+
+---
+## 分类问题大略
+
+
+- 特异度: Specificity
+
+$$
+\text{Spec} =  \frac{\text{TN}}{\text{TN + FP}}
+$$
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+tst_con_mat$byClass["Specificity"]
+
+```
+
+
+
+
+---
+## 分类问题大略
+
+- 流行度: Prevalence
+
+    - 类不均衡的问题
+
+
+```{r message= FALSE, fig.height=5, fig.width=10}
+
+trn_con_mat$byClass["Prevalence"]
+tst_con_mat$byClass["Prevalence"]
+
+```
+
+
+---
+
+class: center, middle
+
+## 2. Logistic Regression
+
+
+
+
+
+---
+## Logistic Regression
+
+
+
+- 线性模型
+
+由于线性回归期望响应变量为数值，应用线性回归时应将分类响应变量强制为数值。
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+library(ISLR)
+library(tibble)
+as_tibble(Default)
+set.seed(42)
+default_idx = sample(nrow(Default), 5000)
+default_trn = Default[default_idx, ]
+default_tst = Default[-default_idx, ]
+default_trn_lm = default_trn
+default_tst_lm = default_tst
+default_trn_lm$default = as.numeric(default_trn_lm$default) - 1
+default_tst_lm$default = as.numeric(default_tst_lm$default) - 1
+
+```
+
+
+---
+## Logistic Regression
+
+- 线性模型
+
+$$
+\hat{\mathbb{E}}[Y \mid X = x] = X\hat{\beta}.
+$$
+
+由于相应变量的取值时0和1，所以：
+
+$$
+\mathbb{E}[Y \mid X = x] = P(Y = 1 \mid X = x).
+$$
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+model_lm = lm(default ~ balance, data = default_trn_lm)
+
+
+```
+
+
+
+---
+## Logistic Regression
+
+- 线性模型
+
+     - 所有预测的概率均低于0.5。 这意味着会将每个观察结果归类为“否”。 这当然是可能的，但并非我们所期望的
+     
+     - 更大的问题是，预测的概率出现小于0的情况。
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(default ~ balance, data = default_trn_lm, 
+     col = "darkorange", pch = "|", ylim = c(-0.2, 1),
+     main = "Using Linear Regression for Classification")
+abline(h = 0, lty = 3)
+abline(h = 1, lty = 3)
+abline(h = 0.5, lty = 2)
+abline(model_lm, lwd = 3, col = "dodgerblue")
+
+
+```
+
+
+
+---
+## Logistic Regression
+
+
+- logistic regression: **glm()**
+
+
+$$
+p(x) = P(Y = 1 \mid {X = x})
+$$
+
+- 最受欢迎的S型函数
+
+$$
+p(X) = \frac {e^{\beta_0 + \beta_1 X}} {1 + e^{\beta_0 + \beta_1 X}}
+$$
+
+$$
+\frac {p(X)} {1 - p(X)}= \frac {\frac {e^{\beta_0 + \beta_1 X}} {1 + e^{\beta_0 + \beta_1 X}}}
+        {1 - \frac {e^{\beta_0 + \beta_1 X}} {1 + e^{\beta_0 + \beta_1 X}}}
+\\
+$$
+
+
+$$
+\frac {p(X)} {1 - p(X)}= \frac {\frac {e^{\beta_0 + \beta_1 X}} {1 + e^{\beta_0 + \beta_1 X}}}
+        {\frac {1} {1 + e^{\beta_0 + \beta_1 X}}}
+$$
+
+
+
+$$
+\log\left(\frac{p(x)}{1 - p(x)}\right) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots  + \beta_p x_p.
+$$
+
+
+
+---
+## Logistic Regression
+
+- 从一个单独的预测变量开始，再次使用“ balance”。
+
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+
+model_glm = glm(default ~ balance, data = default_trn, family = "binomial")
+coef(model_glm)
+head(predict(model_glm, type = "link"))
+
+
+```
+- 但这些并不是预测概率，而仅仅是：
+
+$$
+\hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 + \cdots  + \hat{\beta}_p x_p
+$$
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+
+head(predict(model_glm, type = "response"))
+
+
+```
+
+
+
+---
+## Logistic Regression
+
+
+- 获得分类的预测情况，以0.5为切分点
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+model_glm_pred = ifelse(predict(model_glm, type = "link") > 0.5, "Yes", "No")
+calc_class_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+
+calc_class_err(actual = default_trn$default, predicted = model_glm_pred)
+train_tab = table(predicted = model_glm_pred, actual = default_trn$default)
+library(caret)
+train_con_mat = confusionMatrix(train_tab, positive = "Yes")
+c(train_con_mat$overall["Accuracy"], 
+  train_con_mat$byClass["Sensitivity"], 
+  train_con_mat$byClass["Specificity"])
+```
+
+---
+## Logistic Regression
+
+
+- 自定义一个计算错误率的函数
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+get_logistic_error = function(mod, data, res = "y", pos = 1, neg = 0, cut = 0.5) {
+  probs = predict(mod, newdata = data, type = "response")
+  preds = ifelse(probs > cut, pos, neg)
+  calc_class_err(actual = data[, res], predicted = preds)
+}
+get_logistic_error(model_glm, data = default_trn, 
+                   res = "default", pos = "Yes", neg = "No", cut = 0.5)
+```
+
+
+
+
+---
+## Logistic Regression
+
+- 图形化的结果
+
+    - 黑实竖线是决策边界
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(default ~ balance, data = default_trn_lm, 
+     col = "darkorange", pch = "|", ylim = c(-0.2, 1),
+     main = "Using Logistic Regression for Classification")
+abline(h = 0, lty = 3)
+abline(h = 1, lty = 3)
+abline(h = 0.5, lty = 2)
+curve(predict(model_glm, data.frame(balance = x), type = "response"), 
+      add = TRUE, lwd = 3, col = "dodgerblue")
+abline(v = -coef(model_glm)[1] / coef(model_glm)[2], lwd = 2)
+
+
+```
+
+
+
+
+---
+## Logistic Regression
+
+- 图形化的结果
+
+    - 黑实竖线是决策边界
+
+    
+$$
+\hat{p}(x) = \hat{P}(Y = 1 \mid { X = x}) = 0.5
+$$
+
+
+$$
+\hat{\beta}_0 + \hat{\beta}_1 x_1 = 0.
+$$
+
+
+$$
+x_1 = \frac{-\hat{\beta}_0}{\hat{\beta}_1}.
+$$
+
+
+
+
+---
+## Logistic Regression
+
+- 比较不同的模型
+
+    - 使用预测变量的多项式变换将使线性模型具有非线性决策边界
+    
+    - 方差-偏差权衡问题再次出现
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+model_1 = glm(default ~ 1, data = default_trn, family = "binomial")
+model_2 = glm(default ~ ., data = default_trn, family = "binomial")
+model_3 = glm(default ~ . ^ 2 + I(balance ^ 2),
+              data = default_trn, family = "binomial")
+model_list = list(model_1, model_2, model_3)
+train_errors = sapply(model_list, get_logistic_error, data = default_trn, 
+                      res = "default", pos = "Yes", neg = "No", cut = 0.5)
+test_errors  = sapply(model_list, get_logistic_error, data = default_tst, 
+                      res = "default", pos = "Yes", neg = "No", cut = 0.5)
+
+train_errors
+test_errors
+```
+
+
+
+
+
+
+---
+## Logistic Regression
+
+
+- ROC曲线
+
+     - 计算不同切点下的准确性、敏感度和特异性
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+model_glm = glm(default ~ balance, data = default_trn, family = "binomial")
+get_logistic_pred = function(mod, data, res = "y", pos = 1, neg = 0, cut = 0.5) {
+  probs = predict(mod, newdata = data, type = "response")
+  ifelse(probs > cut, pos, neg)
+}
+
+test_pred_10 = get_logistic_pred(model_glm, data = default_tst, res = "default", 
+                                 pos = "Yes", neg = "No", cut = 0.1)
+test_pred_50 = get_logistic_pred(model_glm, data = default_tst, res = "default", 
+                                 pos = "Yes", neg = "No", cut = 0.5)
+test_pred_90 = get_logistic_pred(model_glm, data = default_tst, res = "default", 
+                                 pos = "Yes", neg = "No", cut = 0.9)
+```
+
+
+
+
+
+
+---
+## Logistic Regression
+
+
+- ROC曲线
+
+     - 计算不同切点下的准确性、敏感度和特异性
+
+
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+test_tab_10 = table(predicted = test_pred_10, actual = default_tst$default)
+test_tab_50 = table(predicted = test_pred_50, actual = default_tst$default)
+test_tab_90 = table(predicted = test_pred_90, actual = default_tst$default)
+
+test_con_mat_10 = confusionMatrix(test_tab_10, positive = "Yes")
+test_con_mat_50 = confusionMatrix(test_tab_50, positive = "Yes")
+test_con_mat_90 = confusionMatrix(test_tab_90, positive = "Yes")
+metrics = rbind(
+  
+  c(test_con_mat_10$overall["Accuracy"], 
+    test_con_mat_10$byClass["Sensitivity"], 
+    test_con_mat_10$byClass["Specificity"]),
+  
+  c(test_con_mat_50$overall["Accuracy"], 
+    test_con_mat_50$byClass["Sensitivity"], 
+    test_con_mat_50$byClass["Specificity"]),
+  
+  c(test_con_mat_90$overall["Accuracy"], 
+    test_con_mat_90$byClass["Sensitivity"], 
+    test_con_mat_90$byClass["Specificity"])
+
+)
+
+rownames(metrics) = c("c = 0.10", "c = 0.50", "c = 0.90")
+metrics
+```
+
+
+
+
+---
+## Logistic Regression
+
+
+- ROC曲线
+
+     - 计算不同切点下的准确性、敏感度和特异性
+     - 灵敏度随着切分点的增加而降低， 相反，特异性随着切分点的增加而增加
+     - 通常会在0.5附近看到最佳精度
+     - 可以创建ROC曲，该曲线将扫过所有可能的临界值，并描画灵敏度和特异性
+     
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+
+library(pROC)
+test_prob = predict(model_glm, newdata = default_tst, type = "response")
+test_roc = roc(default_tst$default ~ test_prob, plot = TRUE, print.auc = TRUE)
+as.numeric(test_roc$auc)
+
+```
+
+
+---
+## Logistic Regression
+
+- 多分类的情况
+
+
+$$
+P(Y = k | X = x) = \frac{e^{\beta_0+\beta_1 x_1+...+\beta x_p}}{\sum e^{\beta_0+\beta_1x_1+...+\beta_p x_p}}
+$$
+
+
+- 使用来自`nnet`软件包的`multinom`函数。 
+- `multinom`是使用与lm（）和glm（）类似的语法完成的，添加`trace = FALSE`参数不显示训练模型时优化更新的信息。
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+set.seed(430)
+iris_obs = nrow(iris)
+iris_idx = sample(iris_obs, size = trunc(0.50 * iris_obs))
+iris_trn = iris[iris_idx, ]
+iris_test = iris[-iris_idx, ]
+library(nnet)
+model_multi = multinom(Species ~ ., data = iris_trn, trace = FALSE)
+
+```
+
+
+---
+## Logistic Regression
+
+- 多分类的情况
+
+    - 仅获得了三类中的两类的系数，就像在逻辑回归中只需要一类的系数一样
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+
+summary(model_multi)$coefficients
+
+```
+
+
+---
+
+class: center, middle
+
+## 3. LDA
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 贝叶斯模型
+
+$$
+p_k(x) = P(Y = k \mid X = x) = \frac{\pi_k \cdot f_k(x)}{\sum \pi_g \cdot f_g(x)}
+$$
+
+- **后验**概率： $p_k(x)$ ，估计该概率然后用于创建分类，对于每种方法，将对估计后验概率最高的类别进行分类，这等效于具有最大后验概率的类别
+- “先验”概率：  $\pi_g$被称为每个可能的类 $g$的“先验”概率，可预先指定
+- 似然函数：   $f_g(x)$，不同的方法似然函数不同
+- 分母通常被称为“归一化常数”
+
+对估计后验概率最高的类别进行分类，等效于具有最大后验概率的类别:
+
+$$
+\log(\hat{\pi}_k \cdot \hat{f}_k({\mathbf x})).
+$$
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+
+- 假设预测变量服从正态分布，且只有一个预测变量
+
+
+$$
+p_k(x) = \frac {\pi_k
+                \frac {1} {\sqrt{2 \pi} \sigma}
+                \exp(- \frac {1} {2 \sigma^2} (x - \mu_k)^2)
+               }
+               {\sum {
+                \pi_l
+                \frac {1} {\sqrt{2 \pi} \sigma}
+                \exp(- \frac {1} {2 \sigma^2} (x - \mu_l)^2)
+               }}
+$$
+
+
+- 判别函数为：
+
+$$
+\delta_k(x) = \log(\pi_k
+                \frac {1} {\sqrt{2 \pi} \sigma}
+                \exp(- \frac {1} {2 \sigma^2} (x - \mu_k)^2))
+$$ 
+$$
+\delta_k(x) = \log(\pi_k) +
+              \log(\frac {1} {\sqrt{2 \pi} \sigma})-
+              \frac {1} {2 \sigma^2} (x - \mu_k)^2
+$$ 
+$$
+\delta_k(x) = \log(\pi_k) +
+              \log(\frac {1} {\sqrt{2 \pi} \sigma})-
+              \frac {x^2} {2 \sigma^2}+
+              x\frac{\mu_k}{\sigma^2}-
+              \frac{\mu_k^2}{2\sigma^2}
+$$
+
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+
+- 假设各类的方差相等，则各类等号后的第二、三项都相等
+
+
+
+$$
+\delta_k(x) = x \frac {\mu_k} {\sigma^2} - 
+              \frac {\mu_k^2} {2 \sigma^2}+
+              \log(\pi_k)
+$$ 
+- 判别函数是x的线性函数，所以被称为Linear Discriminant Analysis
+
+
+- 这个时候，判别点是两类组均值的均值
+
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+
+- 假设预测变量服从正态分布，有两个以上预测变量，判别函数为：
+ 
+
+$$
+\delta_k(x) = x^T\Sigma_k^{-1}\mu_k-\frac{1}{2}\mu_k^T\Sigma_k^{-1}\mu_k+log(\pi_k)
+$$ 
+
+- 两个变量构成了一个平面，考虑PCA的做法，先把平面上的点投影到某条线上
+
+<img src=PCA.png alt="" width="300" height="300" align="bottom" />
+
+
+
+
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- LDA投影的原则是尽量把两个类别区分开来，尽量满足两个标准，均值间距离最大化和类内方差最小化
+
+
+
+![](PCAvsLDA.png)
+
+
+- 如果有三个变量，则构成了一个三维空间，同样的做法，把空间的点投影到某条线上
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+<img src=projection.png alt="" width="500" height="500" align="bottom" />
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 分类个数>2的情况
+
+     - 如何测量距离？
+
+
+<img src=multi_LDA.png alt="" width="600" height="400" align="bottom" />
+     
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 分类个数为3的情况
+
+     - 如何测量距离？
+     - 三个中心点定义了一个平面，需要创建两个轴
+
+
+<img src=ldapar-1.png alt="" width="600" height="400" align="bottom" />
+     
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 分类个数为3的情况
+
+     - 考虑一下如果有1000个预测变量，是不是还是两个轴？
+     - 作为降维方法，PCA和LDA的异同是什么？
+
+<img src=LDA-PCA.png alt="" width="300" height="400" align="bottom" />
+
+---
+
+## Linear Discriminant Analysis
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+set.seed(430)
+iris_obs = nrow(iris)
+iris_idx = sample(iris_obs, size = trunc(0.50 * iris_obs))
+# iris_index = sample(iris_obs, size = trunc(0.10 * iris_obs))
+iris_trn = iris[iris_idx, ]
+iris_tst = iris[-iris_idx, ]
+caret::featurePlot(x = iris_trn[, c("Sepal.Length", "Sepal.Width", 
+                                    "Petal.Length", "Petal.Width")], 
+                   y = iris_trn$Species,
+                   plot = "density", 
+                   scales = list(x = list(relation = "free"), 
+                                 y = list(relation = "free")), 
+                   adjust = 1.5, 
+                   pch = "|", 
+                   layout = c(2, 2), 
+                   auto.key = list(columns = 3))
+
+```
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- LDA
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+
+caret::featurePlot(x = iris_trn[, c("Sepal.Length", "Sepal.Width", 
+                                    "Petal.Length", "Petal.Width")], 
+                   y = iris_trn$Species,
+                   plot = "ellipse",
+                   auto.key = list(columns = 3))
+
+```
+
+
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- LDA
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+caret::featurePlot(x = iris_trn[, c("Sepal.Length", "Sepal.Width", 
+                                    "Petal.Length", "Petal.Width")], 
+                   y = iris_trn$Species,
+                   plot = "box",
+                   scales = list(y = list(relation = "free"),
+                                 x = list(rot = 90)),
+                   layout = c(4, 1))
+
+
+
+```
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+library(MASS)
+iris_lda = lda(Species ~ ., data = iris_trn)
+iris_lda
+
+
+```
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+is.list(predict(iris_lda, iris_trn))
+names(predict(iris_lda, iris_trn))
+head(predict(iris_lda, iris_trn)$class, n = 10)
+head(predict(iris_lda, iris_trn)$posterior, n = 10)
+
+
+
+```
+
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+iris_lda_trn_pred = predict(iris_lda, iris_trn)$class
+iris_lda_tst_pred = predict(iris_lda, iris_tst)$class
+
+calc_class_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+
+calc_class_err(predicted = iris_lda_trn_pred, actual = iris_trn$Species)
+calc_class_err(predicted = iris_lda_tst_pred, actual = iris_tst$Species)
+
+table(predicted = iris_lda_tst_pred, actual = iris_tst$Species)
+
+```
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+lda_plot <- cbind(iris_trn, predict(iris_lda)$x)
+ggplot(lda_plot, aes(LD1, LD2)) +
+  geom_point(aes(color = Species))
+
+
+```
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数，指定先验概率
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+iris_lda_flat = lda(Species ~ ., data = iris_trn, prior = c(1, 1, 1) / 3)
+iris_lda_flat
+
+
+```
+
+
+
+
+---
+
+## Linear Discriminant Analysis
+
+
+- 使用**MASS**包中的**lda()**函数
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+iris_lda_flat_trn_pred = predict(iris_lda_flat, iris_trn)$class
+iris_lda_flat_tst_pred = predict(iris_lda_flat, iris_tst)$class
+
+calc_class_err(predicted = iris_lda_flat_trn_pred, actual = iris_trn$Species)
+calc_class_err(predicted = iris_lda_flat_tst_pred, actual = iris_tst$Species)
+
+
+
+
+```
+
+
+
+---
+
+class: center, middle
+
+## 4. QDA
+
+
+---
+
+## Quadratic Discriminant Analysis
+
+
+- QDA假设各类的预测变量为多元正态分布
+
+
+$$
+X | Y = k \sim N(\mu_k, \Sigma_k)
+$$
+
+- **允许各类的方差协方差矩阵不同**，其判别函数是非线性的
+
+
+
+
+---
+
+## Quadratic Discriminant Analysis
+
+
+
+
+```{r echo = TRUE, message= TRUE, fig.height=5, fig.width=10}
+
+
+iris_qda = qda(Species ~ ., data = iris_trn)
+iris_qda
+iris_qda_trn_pred = predict(iris_qda, iris_trn)$class
+iris_qda_tst_pred = predict(iris_qda, iris_tst)$class
+
+```
+
+
+---
+
+## Quadratic Discriminant Analysis
+
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+decisionplot_ggplot <- function(model, 
+                                vars, 
+                                data, 
+                                resolution = 100,
+                                showgrid = TRUE, 
+                                ...,
+                                modes.means) {
+  if(missing(model) || missing(vars) || missing(data))
+    stop('model, vars or data is missing')
+  if(!(is.character(vars) && length(vars) == 2) && !('formula' %in% class(vars) && length(vars <- all.vars(vars)) == 2))
+    stop('vars should be either a formula or a character vector oflength 2.')
+  if(!is.data.frame(data))
+    stop('data does not seem to comform with standard types.')
+  
+  t <- terms(model)
+  if(!all((other.vars <- attr(t, 'term.labels')) %in% colnames(data)))
+    stop('data is missing one or more variables in model.')
+  lhs <- as.character(t[[2]])
+  # Set up data for prediction, for the data in vars
+  prd.vars <- lapply(data[, vars], function(x){
+    if(is.character(x) || is.factor(x)){
+      unique(x)
+    }else{
+      r <- range(x)
+      seq(r[1], r[2], length.out = resolution)
+    }
+  })
+  names(prd.vars) <- vars
+  # set up data for prediction for the remaining data
+  if(missing(modes.means)){
+    other.vars <- other.vars[!other.vars %in% vars]
+    if(length(other.vars)){
+      modes.means <- lapply(data[, other.vars], function(x){
+        if(is.character(x)){
+          unique(x)[1]
+        }else if(is.factor(x)){
+          levels(x)[1]
+        }else{
+          mean(x)
+        }
+      }) 
+      names(modes.means) <- other.vars
+    }else
+      modes.means <- NULL
+  }else{
+    if(is.null(other.vars))
+      stop('other.vars is null but modes.means was provided. Please leave this missing.')
+    if(!all(other.vars %in% names(modes.means)))
+      stop('modes.means are lacking one or more variables.')
+    modes.means <- as.list(modes.means)
+    if(any(lengths(modes.means) > 1))
+      stop('modes.means should only contain a single values for all variables.')
+  }
+  prd.data <- expand.grid(c(prd.vars, modes.means))
+  p <- predict(model, prd.data, ...)
+  prd.data$nm <- if(is.list(p)) 
+    p$class 
+  else 
+    p
+  names(prd.data)[ncol(prd.data)] <- lhs
+  # Create the final plot.
+  gg <- ggplot(aes_string(vars[1], vars[2]), data = data) + 
+    geom_point(aes_string(col = lhs, shape = lhs), size = 3) + 
+    geom_contour(aes_string(vars[1], vars[2], z = paste0('as.integer(', lhs, ') + 1L')), data = prd.data, inherit.aes = FALSE)
+  if(showgrid)
+    gg <- gg + 
+      geom_point(aes_string(vars[1], vars[2], col = lhs), data = prd.data, shape = 20, size = 0.5)
+  gg
+}
+
+decisionplot_ggplot(iris_qda, Sepal.Width ~ Sepal.Length, iris_trn, class = "Species")
+```
+
+
+
+
+---
+
+## Quadratic Discriminant Analysis
+
+
+- QDA容易出现overfit的情况
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+calc_class_err(predicted = iris_qda_trn_pred, actual = iris_trn$Species)
+calc_class_err(predicted = iris_qda_tst_pred, actual = iris_tst$Species)
+table(predicted = iris_qda_tst_pred, actual = iris_tst$Species)
+
+```
+
+
+---
+
+class: center, middle
+
+## 5. 朴素贝叶斯
+
+
+---
+
+## Naive Bayes
+
+
+- 朴素贝叶斯有多种形式。 仅使用数字预测变量时，通常假设各类服从多元正态分布
+
+
+
+$$
+{\mathbf X} \mid Y = k \sim N(\mu_k, \Sigma_k)
+$$
+
+
+- 朴素贝叶斯假设预测变量 $X_1，X_2，\ldots，X_p$是独立的。 这是朴素贝叶斯的“朴素”部分
+
+- 因此每个 $\Sigma_k$都是对角线的，也就是说，我们假设预测变量之间没有相关性 
+ 
+- 能够将（联合）可能性写为单变量分布的乘积，每个类都有各自在预测变量上的密度函数
+
+
+$$
+f_k(x)=\prod f(x_j)
+$$
+
+
+
+---
+
+## Naive Bayes
+
+- p=1时，朴素贝叶斯等同于QDA
+
+- 选择使用软件包**e1071**中的**naiveBayes()**，该程序包包含许多与机器学习相关的功能
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+library(e1071)
+iris_nb = naiveBayes(Species ~ ., data = iris_trn)
+iris_nb
+
+```
+
+
+---
+
+## Naive Bayes
+
+- **naiveBayes()**如果使用“ 0”和“ 1”作为响应变量，则考虑首先强制为因子
+
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+head(predict(iris_nb, iris_trn))
+head(predict(iris_nb, iris_trn, type = "class"))
+head(predict(iris_nb, iris_trn, type = "raw"))
+
+```
+
+
+---
+
+## Naive Bayes
+
+- **naiveBayes()**如果使用“ 0”和“ 1”作为响应变量，则考虑首先强制为因子
+
+
+
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+
+iris_nb_trn_pred = predict(iris_nb, iris_trn)
+iris_nb_tst_pred = predict(iris_nb, iris_tst)
+calc_class_err(predicted = iris_nb_trn_pred, actual = iris_trn$Species)
+calc_class_err(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
+table(predicted = iris_nb_tst_pred, actual = iris_tst$Species)
+
+```
+
+
+
+
+---
+
+## 几种方法的比较
+
+
+
+```{r echo = FALSE, message= TRUE, fig.height=5, fig.width=10}
+classifiers = c("LDA", "LDA, Flat Prior", "QDA", "Naive Bayes")
+
+train_err = c(
+  calc_class_err(predicted = iris_lda_trn_pred,      actual = iris_trn$Species),
+  calc_class_err(predicted = iris_lda_flat_trn_pred, actual = iris_trn$Species),
+  calc_class_err(predicted = iris_qda_trn_pred,      actual = iris_trn$Species),
+  calc_class_err(predicted = iris_nb_trn_pred,       actual = iris_trn$Species)
+)
+
+test_err = c(
+  calc_class_err(predicted = iris_lda_tst_pred,      actual = iris_tst$Species),
+  calc_class_err(predicted = iris_lda_flat_tst_pred, actual = iris_tst$Species),
+  calc_class_err(predicted = iris_qda_tst_pred,      actual = iris_tst$Species),
+  calc_class_err(predicted = iris_nb_tst_pred,       actual = iris_tst$Species)
+)
+
+results = data.frame(
+  classifiers,
+  train_err,
+  test_err
+)
+
+
+colnames(results) = c("Method", "Train Error", "Test Error")
+
+knitr::kable(results)
+
+```
+
+
+
+
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
