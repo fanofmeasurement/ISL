@@ -1,0 +1,532 @@
+
+---
+title: "KNN vs. REG"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+
+
+```{r setup, include=FALSE, dev="CairoPNG"}
+library("Cairo")
+library("ElemStatLearn")
+library("mlr")
+library("ggplot2")
+library("ISLR")
+library("ggplot2")
+library("MASS")
+require("plotly")
+library("plotly")
+knitr::opts_chunk$set(dev="CairoPNG")
+set.seed(3)
+```
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+
+
+### 线性回归
+
+
+1. 分类的KNN
+
+2. 回归的KNN
+
+
+
+
+---
+
+
+
+## 1. KNN：分类
+
+- 通常，讨论 $k$-最近邻居进行分类时，它被构造为直接返回分类的方法；
+
+- 是一个 $p(x) = P(Y = 1 \mid X = x)$的非参数模型；
+
+
+$$\hat{p}_{kg}(x) = \hat{P}_k(Y = g \mid X = x) = \frac{1}{k} \sum_{i \in \mathcal{N}_k(x, \mathcal{D})} I(y_i = g)$$
+
+- 本质上，每个类 $g$的概率是 $x$附近该类 $g$的 $k$个邻居的比例；
+
+ 
+- 需要创建分类器，将其分类为具有最高估计概率的类即可。
+
+
+---
+
+## 1. KNN：分类
+
+- 将某个case在其 $k$最近的邻居中分类为观察次数最多的类即可，如果多个类的最高估计概率相同，则随机分配给给其中一个；
+
+
+$$
+\begin{align}
+\hat{C}_k(x) =  \underset{g}{\mathrm{argmax}} \ \ \hat{p}_{kg}(x) 
+\end{align}
+$$
+
+
+- 对二分类的问题来说：
+
+
+$$
+\begin{align}
+\hat{C}_k(x) = 
+\begin{cases} 
+      1 & \hat{p}_{k0}(x) > 0.5 \\
+      0 & \hat{p}_{k1}(x) < 0.5
+\end{cases}
+\end{align}
+$$
+
+
+- 如果分为“1”和“0”的概率相当，随机分一个就好。
+
+
+
+
+
+
+---
+
+
+## 1. KNN：分类
+
+例子中我们选了距离最近的五个邻居：
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+
+set.seed(42)
+knn_ex = tibble::tibble(
+  x1 = 1:10,
+  x2 = sample(1:10, size = 10, replace = TRUE),
+  class = sample(c("darkorange", "dodgerblue"), size = 10, replace = TRUE))
+  plot(x2 ~ x1, col = class, data = knn_ex,
+     ylim = c(0, 10), xlim = c(0, 10), pch = 20, cex = 1.5)
+points(8, 6, col = "darkgrey", pch = "x")
+plotrix::draw.circle(8, 6, 2.8, nv = 1000, lty = 1, lwd = 2, border = "darkgrey")
+legend("bottomleft", c("O", "B"), pch = c(20, 20), col = c("darkorange", "dodgerblue"))
+
+```
+
+
+
+---
+
+## 1. KNN：分类
+
+
+- 由于：
+
+$$ \hat{p}_{5B}(x_1 = 8, x_2 = 6) = \hat{P}_5(Y = \text{Blue} \mid X_1 = 8, X_2 = 6) = \frac{3}{5} $$
+
+
+$$ \hat{p}_{5O}(x_1 = 8, x_2 = 6) = \hat{P}_5(Y = \text{Orange} \mid X_1 = 8, X_2 = 6) = \frac{2}{5} $$
+
+
+- 所以：
+
+$$ \hat{C}_5(x_1 = 8, x_2 = 6) = \text{Blue} $$
+
+
+---
+
+
+## 1. KNN：分类
+
+
+- 实际应用中，有多个可以用于knn的包，如**FNN**、**CLASS**等，本例使用**class**包；
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+
+library(ISLR)
+library(class)
+```
+
+- 与我们以前方法（例如逻辑斯蒂回归）不同，**knn()**要求所有预测变量均为数字，因此我们将变量强制为'0'和'1'，将响应作为一个factor；
+
+- 默认的，knn采用欧式距离来确定邻居。
+
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+Default$student = as.numeric(Default$student) - 1
+default_idx = sample(nrow(Default), 5000)
+default_trn = Default[default_idx, ]
+default_tst = Default[-default_idx, ]
+# training data
+X_default_trn = default_trn[, -1]
+y_default_trn = default_trn$default
+
+# testing data
+X_default_tst = default_tst[, -1]
+y_default_tst = default_tst$default
+```
+
+
+
+
+
+
+---
+
+
+## 1. KNN：分类
+
+
+- 对knn来说，其实是没有什么训练，直接返回类别；
+
+- knn有四个参数：
+
+    - train： 训练数据的预测变量
+    - test：测试数据的预测变量，knn对其输出分类
+    - cl： 训练数据上的类标签
+    - k：邻居个数
+
+- 使用**calc_class_err**这个函数计算正确率，评估模型的好坏。
+
+
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+# head(knn(train = X_default_trn,
+#          test  = X_default_tst,
+#          cl    = y_default_trn,
+#          k     = 3))
+
+calc_class_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+
+```
+
+
+
+---
+
+
+## 1. KNN：分类
+
+- 如何选择k
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+library(class)
+set.seed(42)
+k_to_try = 1:20
+err_k = rep(x = 0, times = length(k_to_try))
+
+for (i in seq_along(k_to_try)) {
+  pred = knn(train = scale(X_default_trn), 
+             test  = scale(X_default_tst), 
+             cl    = y_default_trn, 
+             k     = k_to_try[i])
+  err_k[i] = calc_class_err(y_default_tst, pred)
+}
+plot(err_k, type = "b", col = "dodgerblue", cex = 1, pch = 20, 
+     xlab = "k, number of neighbors", ylab = "classification error",
+     main = "(Test) Error Rate vs Neighbors")
+# add line for min error seen
+abline(h = min(err_k), col = "darkorange", lty = 3)
+# add line for minority prevalence in test set
+abline(h = mean(y_default_tst == "Yes"), col = "grey", lty = 2)
+
+pred = knn(train = scale(X_default_trn), 
+           test  = scale(X_default_tst), 
+           cl    = y_default_trn, 
+           k     = 5)
+
+```
+
+
+
+
+---
+
+
+## 1. KNN：分类
+
+- 对于多分类的情况
+
+- **knn**可以返回预测类别的概率，但不能返回所有类别的概率（使用**caret**包可以解决这个问题）
+
+> 代码
+
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+
+set.seed(430)
+iris_obs = nrow(iris)
+iris_idx = sample(iris_obs, size = trunc(0.50 * iris_obs))
+iris_trn = iris[iris_idx, ]
+iris_tst = iris[-iris_idx, ]
+
+# training data
+X_iris_trn = iris_trn[, -5]
+y_iris_trn = iris_trn$Species
+
+# testing data
+X_iris_tst = iris_tst[, -5]
+y_iris_tst = iris_tst$Species
+
+
+iris_pred = knn(train = scale(X_iris_trn), 
+                test  = scale(X_iris_tst),
+                cl    = y_iris_trn,
+                k     = 10,
+                prob  = TRUE)
+#head(iris_pred, n = 50)
+#head(attributes(iris_pred)$prob, n = 50)
+```
+
+
+
+---
+
+
+## 2. KNN：回归
+
+参数 vs. 非参数的模型
+
+$$ f(x) = \mathbb{E}[Y \mid X = x] $$
+
+- 参数的方法
+
+$$ f(x) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots + \beta_p x_p $$
+
+- 非参数的方法
+
+$$ \hat{f}(x) = \text{average}(\{ y_i : x_i = x \}) $$
+
+---
+
+
+## 2. KNN：回归
+
+非参数的模型
+    
+- 如果没有点满足上述要求，则选择接近x的一些点；
+
+  
+$$ \hat{f}(x) = \text{average}( \{ y_i : x_i \text{ equal to (or very close to) x} \} ) $$
+    
+
+- 具体的:
+
+$$ \hat{f}_k(x) = \frac{1}{k} \sum y_i $$
+  
+- 对"close"的点，通常使用欧式距离，但也可以选用其它距离；
+
+- 和**lm()**显性的最小化相比，KNN通过对k的选择隐含了最小化的思想。
+
+
+
+
+
+---
+
+
+## 2. KNN：回归
+
+
+- 创建一个额外的“测试”集“ lstat_grid”，即“ lstat”值的网格，在该网格上预测“ medv”以创建图形。
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+library(FNN)
+library(MASS)
+data(Boston)
+set.seed(42)
+boston_idx = sample(1:nrow(Boston), size = 250)
+trn_boston = Boston[boston_idx, ]
+tst_boston  = Boston[-boston_idx, ]
+X_trn_boston = trn_boston["lstat"]
+X_tst_boston = tst_boston["lstat"]
+y_trn_boston = trn_boston["medv"]
+y_tst_boston = tst_boston["medv"]
+X_trn_boston_min = min(X_trn_boston)
+X_trn_boston_max = max(X_trn_boston)
+lstat_grid = data.frame(lstat = seq(X_trn_boston_min, X_trn_boston_max, 
+                                    by = 0.01))
+```
+
+- 执行KNN回归，需要**FNN**包中的**knn.reg()**。 注意，使用FNN :: knn.reg，因为加载FNN包时需要小心，它还包含一个称为knn的函数。 这个函数也出现在**class**包中，之前用到。
+
+> knn.reg(train = ?, test = ?, y = ?, k = ?)
+
+
+
+
+---
+
+
+## 2. KNN：回归
+
+
+```{r echo=FALSE, fig.height=7, fig.width=8, message=FALSE}
+pred_001 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 1)
+pred_005 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 5)
+pred_010 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 10)
+pred_050 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 50)
+pred_100 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 100)
+pred_250 = knn.reg(train = X_trn_boston, test = lstat_grid, y = y_trn_boston, k = 250)
+
+par(mfrow = c(3, 2))
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 1")
+lines(lstat_grid$lstat, pred_001$pred, col = "darkorange", lwd = 0.25)
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 5")
+lines(lstat_grid$lstat, pred_005$pred, col = "darkorange", lwd = 0.75)
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 10")
+lines(lstat_grid$lstat, pred_010$pred, col = "darkorange", lwd = 1)
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 25")
+lines(lstat_grid$lstat, pred_050$pred, col = "darkorange", lwd = 1.5)
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 50")
+lines(lstat_grid$lstat, pred_100$pred, col = "darkorange", lwd = 2)
+
+plot(medv ~ lstat, data = trn_boston, cex = .8, col = "dodgerblue", main = "k = 250")
+lines(lstat_grid$lstat, pred_250$pred, col = "darkorange", lwd = 2)
+```
+
+
+
+---
+
+
+## 2. KNN：回归
+
+- k越小，模型越复杂，越容易锯齿化；k越大，模型越平滑。
+
+
+
+```{r echo=FALSE, fig.height=5, fig.width=8, message=FALSE}
+
+rmse = function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+make_knn_pred = function(k = 1, training, predicting) {
+  pred = FNN::knn.reg(train = training["lstat"], 
+                      test = predicting["lstat"], 
+                      y = training$medv, k = k)$pred
+  act  = predicting$medv
+  rmse(predicted = pred, actual = act)
+}
+k = c(1, 5, 10, 25, 50, 250)
+knn_trn_rmse = sapply(k, make_knn_pred, 
+                      training = trn_boston, 
+                      predicting = trn_boston)
+#get requested test RMSEs
+knn_tst_rmse = sapply(k, make_knn_pred, 
+                      training = trn_boston, 
+                      predicting = tst_boston)
+
+#determine "best" k
+best_k = k[which.min(knn_tst_rmse)]
+fit_status = ifelse(k < best_k, "Over", ifelse(k == best_k, "Best", "Under"))
+knn_results = data.frame(
+  k,
+  round(knn_trn_rmse, 2),
+  round(knn_tst_rmse, 2),
+  fit_status
+)
+colnames(knn_results) = c("k", "Train RMSE", "Test RMSE", "Fit")
+
+#display results
+knitr::kable(knn_results, escape = FALSE, booktabs = TRUE)
+```
+
+
+
+
+
+
+
+---
+
+#2. KNN：回归
+
+
+- 比较线性、二项式和sin()情况下KNN的表现
+
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE}
+
+line_reg_fun = function(x) {
+  x
+}
+
+quad_reg_fun = function(x) {
+  x ^ 2
+}
+
+sine_reg_fun = function(x) {
+  sin(x)
+}
+
+get_sim_data = function(f, sample_size = 100, sd = 1) {
+  x = runif(n = sample_size, min = -5, max = 5)
+  y = rnorm(n = sample_size, mean = f(x), sd = sd)
+  data.frame(x, y)
+}
+
+set.seed(42)
+line_data = get_sim_data(f = line_reg_fun)
+quad_data = get_sim_data(f = quad_reg_fun, sd = 2)
+sine_data = get_sim_data(f = sine_reg_fun, sd = 0.5)
+
+x_grid = data.frame(x = seq(-5, 5, by = 0.01))
+
+par(mfrow = c(1, 3))
+plot(y ~ x, data = line_data, pch = 1, col = "darkgrey")
+grid()
+knn_pred = FNN::knn.reg(train = line_data$x, test = x_grid, y = line_data$y, k = 10)$pred
+fit = lm(y ~ x, data = line_data)
+lines(x_grid$x, line_reg_fun(x_grid$x), lwd = 2)
+lines(x_grid$x, knn_pred, col = "darkorange", lwd = 2)
+abline(fit, col = "dodgerblue", lwd = 2, lty = 3)
+
+plot(y ~ x, data = quad_data, pch = 1, col = "darkgrey")
+grid()
+knn_pred = FNN::knn.reg(train = quad_data$x, test = x_grid, y = quad_data$y, k = 10)$pred
+fit = lm(y ~ x, data = quad_data)
+lines(x_grid$x, quad_reg_fun(x_grid$x), lwd = 2)
+lines(x_grid$x, knn_pred, col = "darkorange", lwd = 2)
+abline(fit, col = "dodgerblue", lwd = 2, lty = 3)
+
+plot(y ~ x, data = sine_data, pch = 1, col = "darkgrey")
+grid()
+knn_pred = FNN::knn.reg(train = sine_data$x, test = x_grid, y = sine_data$y, k = 10)$pred
+fit = lm(y ~ x, data = sine_data)
+lines(x_grid$x, sine_reg_fun(x_grid$x), lwd = 2)
+lines(x_grid$x, knn_pred, col = "darkorange", lwd = 2)
+abline(fit, col = "dodgerblue", lwd = 2, lty = 3)
+
+```
+
+
+
+
+
+
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
+

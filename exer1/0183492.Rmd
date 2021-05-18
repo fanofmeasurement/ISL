@@ -1,0 +1,120 @@
+---
+title: "线性回归"
+output:
+  html_document:
+    df_print: paged
+---
+# 第8题
+## a
+```{r}
+library(MASS)
+library(ISLR)
+attach (Auto)
+lm.fit=lm(mpg~horsepower)
+summary(lm.fit)
+cor(mpg,horsepower)
+predict(lm.fit,data.frame(horsepower=98),interval="confidence")
+predict(lm.fit,data.frame(horsepower=98),interval="prediction")
+```
+系数显著，故预测变量和响应变量有关系;
+相关系数为-0.7784268，关系较强;
+预测变量系数为负，故预测变量与响应变量是负相关;
+mpg的预测值是24.46708，相应的95%置信区间是（23.97308，24.96108），预测区间是（14.8094，34.12476）
+
+
+## b
+```{r}
+plot(horsepower,mpg)
+abline(lm.fit,col="green")
+
+```
+
+## c
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+
+```
+问题：在“残差图与拟合图”中可以看到一个曲线关系，说明回归模型可能存在二次项；且由“残差与杠杆图”知存在离群点
+
+# 第9题
+## a
+```{r}
+pairs(Auto,pch=21)
+```
+
+## b
+```{r}
+auto<-Auto[,1:8]
+cor(auto)
+```
+
+## c
+```{r}
+lm.fit1=lm(mpg~.-name,data = Auto)
+summary(lm.fit1)
+```
+预测变量和响应变量之间有关系，但有强有弱
+displacement,weight,year,origin与响应变量在统计上有显著关系
+车龄变量系数说明两者存在正相关，在其它变量保持不变时，车龄每增加一个单位，油耗增加0.750773个单位
+
+## d
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit1)
+```
+有异常大的离群点，杠杆图的点都在等高线之内，没有识别出有异常高杠杆作用的点
+
+## e
+```{r}
+summary(lm(mpg~displacement*weight,data=Auto))
+summary(lm(mpg~displacement*year,data=Auto))
+```
+由结果知存在统计显著的交互作用
+
+## f
+```{r}
+lm.fit2=lm(mpg~horsepower+I(log(horsepower)))
+lm.fit3=lm(mpg~horsepower+I(horsepower^2))
+lm.fit4=lm(mpg~horsepower+I(sqrt(horsepower)))
+anova(lm.fit,lm.fit2)
+anova(lm.fit,lm.fit3)
+anova(lm.fit,lm.fit4)
+```
+由三个假设检验表明对预测变量进行了变换的模型均优于只包含预测变量horsepower的模型（anova（）检验的p值均几乎为零）
+
+# 第10题
+## a
+```{r}
+attach(Carseats)
+lm.fit5=lm(Sales~Price+Urban+US,data=Carseats)
+summary(lm.fit5)
+contrasts(Urban)
+```
+## b
+Price:其它变量不变，价格每增加一个单位，销售量减少0.054459个单位
+Urban:其它变量不变，城市比非城市少0.021916个单位销售量
+US:其它变量不变，美国与非美国多1.00573个单位销售量
+
+## c
+$$y_i=13.043469-0.054459x_1+1.200573x_2+\epsilon$$
+其中$$x_2$$取值为1和0
+
+## d
+price,US可以拒绝原假设
+
+## e
+```{r}
+lm.fit6=lm(Sales~Price+US,data=Carseats)
+```
+
+## f g h
+```{r}
+anova(lm.fit5,lm.fit6)
+confint(lm.fit6)
+par(mfrow=c(2,2))
+plot(lm.fit6)
+```
+由p值大于0.05知两模型对数据拟合无显著差异。
+截距的95%置信区间为（11.79032020，14.27126531）；Price的95%置信区间为（-0.06475984，-0.04419543）;US的95%置信区间为（ 0.69151957  ，1.70776632）。
+由Residuals vs Leverage图知存在离群点
