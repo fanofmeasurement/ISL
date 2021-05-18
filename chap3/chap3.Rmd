@@ -17,14 +17,8 @@ output:
 
 
 
-```{r xaringan-themer, include = FALSE, warning = FALSE}
-library(xaringanthemer)
-style_solarized_light()
-
-```
-
-
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, dev="CairoPNG"}
+library("Cairo")
 library("ElemStatLearn")
 library("mlr")
 library("ggplot2")
@@ -33,8 +27,16 @@ library("ggplot2")
 library("MASS")
 require("plotly")
 library("plotly")
+knitr::opts_chunk$set(dev="CairoPNG")
 set.seed(3)
 ```
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
 
 ### 线性回归
 
@@ -412,7 +414,7 @@ $$sales = \beta_0 + \beta_1 \times TV + \beta_2 \times radio +\beta_3 \times new
 $$ \hat{y} = b_0 +.50W-.10H$$
 如何解释 $\beta_2$？
 
-- **所有的模型都是错的，但是有些是有用的！**
+- **所有的模型都是错的，但是有些是有用的！————George Box**
 
 
 ---
@@ -429,7 +431,8 @@ $$ \hat{y} = b_0 +.50W-.10H$$
 $$ \hat{y} = b_0 +.50W-.10H$$
 如何解释 $\beta_2$？
 
-- **对复杂系统来说，唯一可以确定发生了什么的方法是对它进行干预，而不是只是被动的观察！**
+- **对复杂系统来说，唯一可以确定发生了什么的方法是对它进行干预，而不是只是被动的观察！————George Box**
+
 
 
 
@@ -493,7 +496,7 @@ Newspaper=Advertising$newspaper
 
 fit1 = lm(Sales~Tv + Radio + Newspaper)
 anova(fit1)
-
+#summary(fit1)
 ```
 
 
@@ -505,6 +508,674 @@ Advertising<-read.csv(file="Advertising.csv",header=T,sep=',',dec='.')
 cor(Advertising[,2:5])
 ```
    
+   
+
+
+---
+
+### 变量选择
+
+- 最直接的方法是全子集回归或最优子集；
+
+- 全子集方法可能的子集数可能非常大，如果p个变量，则可能的子集数是 $2^p$个。
+
+    - 如果有3个变量，则可能的变量子集是：
+
+$$
+\begin{bmatrix}
+0 & 0 & 0\\
+0 & 0 & 1\\
+0 & 1 & 0\\
+0 & 1 & 1\\
+1 & 0 & 0\\
+1 & 0 & 1\\
+1 & 1 & 0\\
+1 & 1 & 1
+\end{bmatrix}
+$$
+
+
+
+
+   
+---
+
+### 变量选择
+
+- 虽然计算量大，但是R也提供全子集回归的方法
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+library(leaps)
+leaps<-regsubsets(sales ~ TV + radio + newspaper,data = Advertising, nbest=3)
+plot(leaps,scale="adjr2")
+   
+```   
+
+
+   
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Forward selection
+
+    - 从零模型（null model）开始，作为第一个模型；
+    - 遍历 $p$个预测变量，选择显著且RSS最小的作为第二个模型（ $p = 1$）；
+    - 遍历剩下的 $p-1$个变量，每次添加一个预测变量到模型中，选择显著且RSS最小的作为第三个模型（ $p = 2$）；
+    - 遍历剩下的 $p-2$个变量......
+    - 直到添加变量不会使模型显著改进为止。
+
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Forward selection
+
+
+$$F^*=\frac{\frac{SSE(C)-SSE(A)}{PA-PC}}{\frac{SSE(A)}{n-PA}}$$
+$$F^*=\frac{\frac{2102.531-556.914}{2-1}}{\frac{556.914}{197}}$$ 
+ 
+ 
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+forward <- step(intercept_only, direction='forward', scope=formula(all), trace=0)
+
+knitr::kable(forward$anova)
+forward$coefficients
+   
+```
+  
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Forward selection
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+forward <- step(intercept_only, direction='forward', scope=formula(all), trace=1)
+```
+
+
+
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Backward selection
+
+    - 从全模型（full model）开始，作为第一个模型；
+    - 遍历 $p$个预测变量，选择不显著且去掉后RSS变化最小的作为第二个模型（ $p = p-1$）；
+    - 遍历剩下的 $p-1$个变量，每次减少一个预测变量，选择不显著且去掉后RSS变化最小的作为第三个模型（ $p = p-2$）；
+    - 遍历剩下的 $p-3$个变量......
+    - 直到减少变量会使模型显著变差为止。
+
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Backward selection
+
+$$F^*=\frac{\frac{556.9140-556.8253}{2-1}}{\frac{556.914}{197}}$$ 
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+backward <- step(all, direction='backward', scope=formula(all), trace=0)
+
+knitr::kable(backward$anova)
+#backward$coefficients
+```
+
+
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Backward selection
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+backward <- step(all, direction='backward', scope=formula(all), trace=1)
+
+
+   
+```
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Both selection
+
+    - 先向前，增加新变量后再看现有模型里是否有变量 $p$值增大
+    - 如果有，就删除此变量
+    - 再增加新的变量，再删除已进入变量
+    - 一直到没有变量可增加，也没有变量可删除为止
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+both <- step(intercept_only, direction='both', scope=formula(all), trace=0)
+
+#step.fit <- stepAIC(all,direction = "both")
+
+knitr::kable(both$anova)
+#backward$coefficients
+   
+```
+
+
+
+---
+
+### 变量选择
+
+- 选择最优子集的办法：Both selection
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(MASS)
+intercept_only <- lm(sales ~ 1, data=Advertising)
+all <- lm(sales ~ TV + radio + newspaper, data=Advertising)
+both <- step(intercept_only, direction='both', scope=formula(all), trace=1)
+```
+
+
+
+
+---
+
+### 变量选择
+
+- 需要注意的是：
+
+    - 如果 $p>n$，不能使用**backward**，但可以使用**forward**;
+    - **forward**是一个贪婪算法，可能纳入一些多余变量，**both**可以修正。
+    
+- 对**Advertising**数据来说：
+
+    - 增加变量一定会增大 $R^2$，但是要看是否值得，代价是一个自由度，收益是残差平方和减少的量；
+    - 虽然**Newspaper**没有进入方程，但是也要注意到它和**Radio**之间的相关关系，这意味着客户可能会同时投放二者；
+    - 仅投放**Radio**而不投放**Newspaper**是否就会增加销售，还是需要做了干预之后才能最后确定下来。
+
+
+
+
+---
+
+### 变量选择
+
+```{r echo=FALSE, fig.height=7, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+library(ISLR)
+library(ggplot2)
+library(MASS)
+library("plot3D")
+z=Advertising$sales
+y=Advertising$TV
+x=Advertising$radio
+
+#Fitting the linear regression model (z = ax + by + d)
+fit <- lm(z ~ x + y)
+# Predict values on regular xy grid
+grid.lines = 50
+x.pred <- seq(min(x), max(x), length.out = grid.lines)
+y.pred <- seq(min(y), max(y), length.out = grid.lines)
+xy <- expand.grid( x = x.pred, y = y.pred)
+z.pred <- matrix(predict(fit, newdata = xy), 
+                 nrow = grid.lines, ncol = grid.lines)
+# fitted points for droplines to surface
+fitpoints <- predict(fit)
+#scatter plot with regression plane with few colors
+scatter3D(x, y, z, pch = 19, cex = 1,col=c('red'),
+          theta = 25, phi = 0, scale=TRUE, expand=0.6,
+          xlab = "Radio", ylab = "Tv", zlab = "Sales",
+          surf = list(x = x.pred, y = y.pred, z = z.pred,col='#006633',
+                      facets = NA, fit = fitpoints))
+
+```
+
+
+
+
+---
+
+### 分类变量
+
+- 一些变量是分类的，或者称为定性的；
+- 分类变量也通常被定义为**因子**类型的变量
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+data("Credit")
+# Credit
+str(Credit)
+
+```
+
+
+
+---
+
+### 分类变量
+
+- 一些变量是分类的，或者称为定性的；
+- 分类变量也通常被定义为**因子**类型的变量
+
+
+```{r echo = T, message= FALSE, fig.height=5, fig.width=10}
+
+data("Credit")
+# Credit
+levels(Credit$Gender)
+levels(Credit$Student)
+levels(Credit$Married)
+levels(Credit$Ethnicity)
+
+```
+
+---
+
+### 分类变量
+
+- 一些变量是分类的，或者称为定性的；
+- 分类变量也通常被定义为**因子**类型的变量
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+data("Credit")
+# Credit
+#str(Credit)
+pairs(Credit, col = "blue", cex = .5, cex.axis = .5)
+
+```
+
+
+
+---
+
+### 分类变量
+
+**例子**：信用卡平衡的问题上是否存在性别差异：
+
+$$
+\begin{align}
+1 && \mbox{如果是女性} \\
+0 && \mbox{如果是男性} \\
+\end{align}
+$$
+
+那么，仅考虑性别的信用模型模型
+
+$$y_i = \beta_0 + \beta_1x_i +\epsilon_i$$
+就变为：
+
+$$
+\begin{align}
+\beta_0 + \beta_1 +\epsilon_i && \mbox{如果是女性} \\
+\beta_0 +\epsilon_i && \mbox{如果是男性} \\
+\end{align}
+$$
+
+男性是参照组。
+
+
+---
+
+### 分类变量
+
+- R自动对factor类型变量进行编码
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+data("Credit")
+# Credit
+fit <- lm(Balance ~ Gender, data=Credit)
+summary(fit)
+tapply(Credit$Balance,Credit$Gender,mean)
+
+```
+
+
+
+---
+
+### 分类变量
+
+
+**例子**：信用卡平衡的问题上是否存在种族差异？种族有三个水平，构建两个分类变量：
+
+第一个区分是否亚裔：
+
+$$
+\begin{align}
+1 && \mbox{如果是亚裔} \\
+0 && \mbox{如果不是亚裔} \\
+\end{align}
+$$
+
+
+第二个哑变量也有两个取值：
+
+$$
+\begin{align}
+1 && \mbox{如果是源自欧洲的白人} \\
+0 && \mbox{如果不是源自欧洲的白人} \\
+\end{align}
+$$
+
+
+
+---
+
+### 分类变量
+
+
+**例子**：那么，仅考虑种族的信用模型模型
+
+$$y_i = \beta_0 + \beta_1x_{i1} + \beta_2 x_{i2} + \epsilon_i$$
+
+就变为：
+
+$$
+\begin{align}
+    \beta_0 + \beta_1 +\epsilon_i && \text{如果是亚裔} \\
+    \beta_0 + \beta_2 +\epsilon_i && \text{如果是来自欧洲的白人} \\
+    \beta_0 + \epsilon_i && \text{如果是非裔美国人} \\
+\end{align}
+$$
+非裔美国人是参照组。
+
+
+
+---
+
+### 分类变量
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+data("Credit")
+# Credit
+fit <- lm(Balance ~ Ethnicity, data=Credit)
+summary(fit)
+tapply(Credit$Balance,Credit$Ethnicity,mean)
+
+
+```
+
+
+---
+
+### 变量交互问题
+
+
+- 在**Advertising**数据里，我们假设一种广告媒体对销售额的影响是独立于其他广告媒体的；
+
+- 在线性模型里，我们可以解释说，在TV上的广告投入每增长1个单位，销售额增长 $\beta_1$个单位，而不用考虑Radio或Newspaper的变化。
+
+$$sales = \beta_0 + \beta_1 \times TV + \beta_2 \times radio +\beta_3 \times newspaper + \varepsilon $$
+- 但是，如果广告客户在Radio上的投入也增加了在TV上的投入呢？那么TV的斜率应该随着Radio上的广告投入的增加而增加。
+
+- 比如，有100000的广告预算，在Radio和TV上各投入一半要好过全部投入到Radio或TV上，这就是所谓的**协同增效**，在统计上被称为**交互作用**。
+
+
+
+---
+
+### 变量交互问题
+
+
+- 当Radio增加的时候，TV也在增加，Radio或TV单独增长的情况较少。
+
+```{r echo=FALSE, fig.height=6, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+library(ISLR)
+library(ggplot2)
+library(MASS)
+library("plot3D")
+z=Advertising$sales
+y=Advertising$TV
+x=Advertising$radio
+
+#Fitting the linear regression model (z = ax + by + d)
+fit <- lm(z ~ x + y)
+# Predict values on regular xy grid
+grid.lines = 50
+x.pred <- seq(min(x), max(x), length.out = grid.lines)
+y.pred <- seq(min(y), max(y), length.out = grid.lines)
+xy <- expand.grid( x = x.pred, y = y.pred)
+z.pred <- matrix(predict(fit, newdata = xy), 
+                 nrow = grid.lines, ncol = grid.lines)
+# fitted points for droplines to surface
+fitpoints <- predict(fit)
+#scatter plot with regression plane with few colors
+scatter3D(x, y, z, pch = 19, cex = 1,col=c('red'),
+          theta = 25, phi = 0, scale=TRUE, expand=0.6,
+          xlab = "Radio", ylab = "Tv", zlab = "Sales",
+          surf = list(x = x.pred, y = y.pred, z = z.pred,col='#006633',
+                      facets = NA, fit = fitpoints))
+
+```
+
+
+---
+
+### 变量交互问题
+
+
+$$sales = \beta_0 + \beta_1 \times TV + \beta_2 \times radio +\beta_3 \times (radio \times TV) + \varepsilon \\$$
+$$sales = \beta_0 + (\beta_1 + \beta_3 \times radio)\times TV + \beta_2 \times radio + \varepsilon \\$$
+
+
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+
+library(MASS)
+lm0 <- lm(sales ~ TV * radio, data=Advertising)
+lm1 <- lm(sales ~ TV + radio + TV:radio, data=Advertising)
+
+summary(lm0)
+#summary(lm1)
+
+```
+
+
+
+---
+
+### 变量交互问题
+
+- 类似 $1+1>2$：
+
+
+$$sales = \beta_0 + (\beta_1 + \beta_3 \times radio)\times TV + \beta_2 \times radio + \varepsilon \\$$
+
+TV每增加1000元，销售额增长 $19+1.1\times radio$。
+
+
+$$sales = \beta_0 + (\beta_2 + \beta_3 \times TV)\times radio + \beta_1 \times TV + \varepsilon \\$$
+
+radio每增加1000元，销售额增加 $29+1.1\times TV$。
+
+
+
+---
+
+### 交互效应中层级结构问题
+
+- 先有主效应，再有交互效应，即使交互效应显著但主效应不显著。
+
+- 没有主效应，就没有交互效应，在方程里，即使去掉了主效应，主效应也仍然包含在交互项里，交互效应的本来含义就是一个变量的变化会带来另一个变量的变化；
+
+- 交互效应存在时，主效应可能被掩盖了。
+
+$$sales = \beta_0 + (\beta_2 + \beta_3 \times TV)\times radio + \epsilon \\$$
+
+
+
+
+
+---
+
+### 交互效应中定性变量和定量变量交互问题
+
+**例子**：在**Credit**数据中，考虑用income和student预测balance。
+
+$$balance_i = \beta_0 + \beta_1 \times income_i + \beta_2 \times student_i+ \epsilon_i$$
+
+可以写为两个式子：
+
+- 如果是学生：
+
+$$balance_i = \beta_1 \times income_i + \beta_0 + \beta_2+ \epsilon_i$$
+
+- 如果加上交互作用
+    
+$$balance_i = \beta_1 \times income_i + \beta_0 + \beta_2 + \beta_3 \times income_i+ \epsilon_i$$
+
+$$balance_i = (\beta_0 + \beta_2) +(\beta_1 + \beta_3)\times income_i+ \epsilon_i$$
+
+
+---
+
+### 交互效应中定性变量和定量变量交互问题
+
+**例子**：在**Credit**数据中，考虑用income和student预测balance。
+
+$$balance_i = \beta_0 + \beta_1 \times income_i + \beta_2 \times student_i+ \epsilon_i$$
+- 如果不是学生：
+
+$$balance_i =  \beta_0+\beta_1 \times income_i + \epsilon_i$$
+
+- 如果加上交互作用
+
+
+$$balance_i = \beta_0+\beta_1 \times income_i +  \epsilon_i$$
+
+
+
+---
+
+### 交互效应中定性变量和定量变量交互问题
+
+可以看到，学生回归线的斜率低于非学生回归线的斜率，收入增加在学生群体引起的信用卡平衡问题会更小。
+
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+
+library(ISLR)
+library(MASS)
+library(ggplot2)
+Credit=ISLR::Credit
+#head(Credit)
+Balance=Credit[,12]
+Income=Credit[,2]
+Student=Credit[,9]
+fitted1=lm(Balance~Income+Student)$fitted.values
+fitted2=lm(Balance~Income+Student+Income*Student)
+newdata1=data.frame(fitted1,Income,Student)
+# ggplot(newdata1, aes(x=Income, y=fitted1))+
+#   labs(title="Prediction of balance from Income and student. Model1",
+#        x="Income", y = "Balance")+
+#   geom_line(aes(group = Student, color = Student), size = 1) 
+
+fitted2=lm(Balance~Income+Student+Income*Student)$fitted
+newdata2=data.frame(fitted2,Income,Student)
+# ggplot(newdata2, aes(x=Income, y=fitted2))+
+#   labs(title="Prediction of balance from Income and student with interaction. Model2",
+#        x="Income", y = "Balance")+
+#   geom_line(aes(group = Student, color = Student), size = 1) 
+
+# To put them side-by-side
+
+library(cowplot)
+
+Model1<-ggplot(newdata1, aes(x=Income, y=fitted1))+
+  labs(title="Prediction of balance from Income and student.\n Model1",
+       x="Income", y = "Balance")+
+  geom_line(aes(group = Student, color = Student), size = 1) 
+
+Model2<-ggplot(newdata2, aes(x=Income, y=fitted2))+
+  labs(title="Prediction of balance from Income and student \n with interaction. Model2",
+       x="Income", y = "Balance")+
+  geom_line(aes(group = Student, color = Student), size = 1) 
+
+plot_grid(Model1, Model2, labels = "AUTO")
+
+
+
+```
+
+
+
+---
+
+### 非线性关系问题
+
+
+- 多项式回归
+
+
+```{r echo=FALSE, fig.height=6, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+
+library(ISLR)
+library(MASS)
+library(ggplot2)
+Auto=ISLR::Auto
+mpg<-Auto$mpg
+horsepower<-Auto$horsepower
+fit.lm<-lm(mpg~horsepower,data=Auto)
+fit.lm2<-lm(mpg~poly(horsepower,2),data=Auto)
+fit.lm5<-lm(mpg~poly(horsepower,5),data=Auto)
+d<-seq(40,300,length.out=length(horsepower))
+plot(horsepower,mpg,ylim=c(10,50),xlim=c(45,230),col="grey",main='Non linear trend between mpg and horsepower. Auto dataset ISLR')
+lines(d,predict(fit.lm,data.frame(horsepower=d)),col="orange",lwd=2)
+lines(d,predict(fit.lm2,data.frame(horsepower=d)),col="blue",lwd=2)
+lines(d,predict(fit.lm5,data.frame(horsepower=d)),col="green",lwd=2)
+legend("topright",c("Linear","Degree 2","Degree 5"),col=c("orange","blue","green"),lwd=2,cex=0.7)
+
+
+```
+
+
+---
+
+### 非线性关系问题
+
+- 多项式回归
+
+
+```{r echo=FALSE, fig.height=6, fig.width=10, message=FALSE, warning=FALSE, warnings=FALSE}
+
+library(ISLR)
+library(MASS)
+library(ggplot2)
+Auto=ISLR::Auto
+mpg<-Auto$mpg
+horsepower<-Auto$horsepower
+#fit.lm<-lm(mpg~horsepower,data=Auto)
+fit.lm2<-lm(mpg~poly(horsepower,2),data=Auto)
+summary(fit.lm2)
+```
+
 ---
 
 class: center, middle
