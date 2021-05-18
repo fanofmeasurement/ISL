@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>重抽样方法</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="李峰" />
+    <meta name="date" content="2021-05-08" />
+    <script src="libs/header-attrs-2.7/header-attrs.js"></script>
+    <link rel="stylesheet" href="xaringan-themer.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# 重抽样方法
+### 李峰
+### 统计学院<br/>江西财经大学
+### 2021-05-08
+
+---
+
+
+
+
+
+
+
+
+&lt;style type="text/css"&gt;
+.math.inline {
+}
+&lt;/style&gt;
+
+
+
+### 重抽样方法
+
+1. 交叉验证
+
+2. bootstrap
+
+
+
+
+
+---
+
+class: center, middle
+
+## 1. 交叉验证
+
+
+
+---
+
+## 交叉验证
+
+- 已经接触过交叉验证，之前我们把数据集按照5:5分成训练集和测试集，但是也可以按照不同的比例进行划分。
+
+- 比如，我们定义一个数据：
+
+$$
+Y \sim N(\mu = x^3, \sigma^2 = 0.25 ^ 2)
+$$
+
+
+
+```r
+gen_sim_data = function(sample_size) {
+  x = runif(n = sample_size, min = -1, max = 1)
+  y = rnorm(n = sample_size, mean = x ^ 3, sd = 0.25)
+  data.frame(x, y)
+}
+set.seed(42)
+sim_data = gen_sim_data(sample_size = 200)
+```
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 这次按照8:2来分
+
+- 画出训练数据的散点图和真实函数
+
+![](chap5_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 如果只有训练集，容易得到一个most flexible model，一个最“合身”的模型
+
+- 选择了一个10阶多项式模型
+
+- 需要测试集来检验模型的泛化能力
+
+
+```r
+calc_mse = function(actual, predicted) {
+  mean((actual - predicted) ^ 2)
+}
+
+fit = lm(y ~ poly(x, 10), data = sim_trn)
+
+calc_mse(actual = sim_trn$y, predicted = predict(fit, sim_trn))
+```
+
+```
+## [1] 0.05279768
+```
+
+```r
+calc_mse(actual = sim_val$y, predicted = predict(fit, sim_val))
+```
+
+```
+## [1] 0.07675459
+```
+
+
+
+---
+
+## 交叉验证
+
+- 模型
+
+
+```
+## 
+## Call:
+## lm(formula = y ~ poly(x, 10), data = sim_trn)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.51180 -0.16427 -0.01101  0.13790  0.64325 
+## 
+## Coefficients:
+##                Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)   -0.003929   0.018824  -0.209    0.835    
+## poly(x, 10)1   4.370568   0.238108  18.355  &lt; 2e-16 ***
+## poly(x, 10)2   0.042934   0.238108   0.180    0.857    
+## poly(x, 10)3   1.770107   0.238108   7.434 7.66e-12 ***
+## poly(x, 10)4  -0.381966   0.238108  -1.604    0.111    
+## poly(x, 10)5  -0.139126   0.238108  -0.584    0.560    
+## poly(x, 10)6  -0.078951   0.238108  -0.332    0.741    
+## poly(x, 10)7   0.368480   0.238108   1.548    0.124    
+## poly(x, 10)8   0.224543   0.238108   0.943    0.347    
+## poly(x, 10)9  -0.149815   0.238108  -0.629    0.530    
+## poly(x, 10)10  0.252875   0.238108   1.062    0.290    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.2381 on 149 degrees of freedom
+## Multiple R-squared:  0.7286,	Adjusted R-squared:  0.7104 
+## F-statistic: 40.01 on 10 and 149 DF,  p-value: &lt; 2.2e-16
+```
+
+
+
+
+---
+
+## 交叉验证
+
+
+- 如果我们把多项式模型从1阶到10阶都试一遍会怎么样？
+
+- 系统改变多项式模型阶数的过程就被称为**调参(tuning parameter)**
+
+- 模拟了多少次？
+
+
+```r
+num_sims = 100
+num_degrees = 10
+val_mse = matrix(0, ncol = num_degrees, nrow = num_sims)
+
+set.seed(42)
+
+for (i in 1:num_sims) {
+  sim_data = gen_sim_data(sample_size = 200)
+  sim_idx = sample(1:nrow(sim_data), 160)
+  sim_trn = sim_data[sim_idx, ]
+  sim_val = sim_data[-sim_idx, ]
+
+  for (j in 1:num_degrees) {
+    fit = glm(y ~ poly(x, degree = j), data = sim_trn)
+    val_mse[i, j] = calc_mse(actual = sim_val$y, predicted = predict(fit, sim_val))
+  }
+}
+```
+
+
+
+
+---
+
+## 交叉验证
+
+- 左图显示了几次模拟的结果？
+
+- 右图的含义是什么？
+
+![](chap5_files/figure-html/unnamed-chunk-7-1.png)&lt;!-- --&gt;
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 如何理解这个结果？
+
+- 为什么要使用 `\(k\)`折交叉？
+
+![](chap5_files/figure-html/unnamed-chunk-8-1.png)&lt;!-- --&gt;
+
+
+---
+
+## 交叉验证
+
+- `\(k\)`折交叉验证
+
+
+$$
+MSE-CV_{K} = \sum\frac{n_k}{n} MSE_k
+$$
+
+$$
+MSE_k = \frac{1}{n_k} \sum \left( y_i - \hat{f}^{-k}(x_i) \right)^2
+$$
+- 符号 `\(n_k\)`是第 `\(k\)` 折时观测值的个数
+- 符号 `\(\hat{f}^{-k}()\)` 是没有使用第 `\(k\)`折数据时训练得到的模型
+
+
+如果每折的观测值个数 `\(n_k\)`都相等，则：
+
+$$
+MSE-CV_{K} = \frac{1}{K}\sum MSE_k
+$$
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- R中有很多方式可以做交叉验证，取决于统计学习方法
+
+    - **glm()**中的`boot::cv.glm()`
+    - **knn()`**中的`knn.cv()`
+    
+- 以`boot::cv.glm()`为例，其缺省设置是**留一法**，每次只用一个观测值来进行验证
+    
+    - 当然可以用5折或10折
+
+
+```
+## (Intercept) poly(x, 3)1 poly(x, 3)2 poly(x, 3)3 
+##  -0.0289307   4.5471322  -0.1527198   2.3895917
+```
+
+```
+## [1] 0.06752539 0.06751383
+```
+
+```
+## [1] 0.06907891 0.06848982
+```
+
+
+
+
+---
+
+## 交叉验证
+
+- 重复之前的模拟过程
+
+
+```r
+cv_mse = matrix(0, ncol = num_degrees, nrow = num_sims)
+
+set.seed(42)
+for (i in 1:num_sims) {
+  # simulate data, use all data for training
+  sim_trn = gen_sim_data(sample_size = 200)
+  # fit models and store RMSE
+  for (j in 1:num_degrees) {
+    #fit model
+    fit = glm(y ~ poly(x, degree = j), data = sim_trn)
+    # calculate error
+    cv_mse[i, j] = boot::cv.glm(sim_trn, fit, K = 5)$delta[1]
+  }
+}
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 和只有一个验证集的结果进行比较
+
+![](chap5_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+
+
+
+
+---
+
+## 交叉验证
+
+- 和只有一个验证集的结果进行比较
+
+![](chap5_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+
+
+
+
+
+---
+
+## 交叉验证
+
+- - 和只有一个验证集的结果进行比较
+
+
+| Polynomial Degree| Mean, Val| SD, Val| Mean, CV| SD, CV|
+|-----------------:|---------:|-------:|--------:|------:|
+|                 1|     0.085|   0.018|    0.086|  0.009|
+|                 2|     0.086|   0.018|    0.087|  0.009|
+|                 3|     0.062|   0.013|    0.063|  0.005|
+|                 4|     0.062|   0.014|    0.064|  0.005|
+|                 5|     0.062|   0.014|    0.064|  0.005|
+|                 6|     0.063|   0.014|    0.065|  0.005|
+|                 7|     0.063|   0.014|    0.065|  0.006|
+|                 8|     0.064|   0.014|    0.066|  0.006|
+|                 9|     0.065|   0.014|    0.067|  0.006|
+|                10|     0.066|   0.014|    0.067|  0.006|
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 考虑分类问题
+
+$$
+Y \sim \text{bern}(p = 0.5)
+$$
+
+
+```r
+calc_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 模拟一个特殊的例子
+
+- 有10000个预测变量，每个都服从标准正态分布
+
+
+$$
+X_j \sim N(\mu = 0, \sigma^2 = 1)
+$$
+
+- 但是，只有200个观测值
+
+
+```r
+set.seed(42)
+n = 200
+p = 10000
+x = replicate(p, rnorm(n))
+y = c(rbinom(n = n, size = 1, prob = 0.5))
+full_data = data.frame(y, x)
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 考虑用一半数据做验证集，一半做训练集
+
+
+```r
+trn_idx  = sample(1:nrow(full_data), trunc(nrow(full_data) * 0.5))
+trn_data = full_data[trn_idx,   ]
+tst_data = full_data[-trn_idx, ]
+```
+
+
+- 使用**logistic regression**，但是 `\(p&gt;n\)`，只能选择一部分变量进入回归方程
+
+
+---
+
+## 交叉验证
+
+- 如何选？
+
+    - 先做相关
+
+![](chap5_files/figure-html/unnamed-chunk-17-1.png)&lt;!-- --&gt;
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 有些变量相关很低，选择相关最高的前25个
+
+
+```
+##      X4942       X867      X8617      X8044       X406      X4358      X7725 
+##  0.4005771  0.3847397  0.3809371  0.3692479 -0.3571329  0.3553777 -0.3459522 
+##      X1986      X3784        X77      X7010      X9354      X8450      X2355 
+## -0.3448612  0.3298109 -0.3252776 -0.3242813  0.3227353  0.3220087  0.3192606 
+##      X4381      X2486      X5947      X5767      X1227      X1464      X8223 
+##  0.3157441  0.3149892  0.3131235  0.3114936 -0.3105052 -0.3104528  0.3084551 
+##       X188      X4203      X2234      X1098 
+##  0.3065491  0.3039848 -0.3036512 -0.3036153
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 基于这25个变量分别构建训练集和测试集
+
+- 计算得到**MSE**的值
+
+
+
+```
+## [1] 0.3742339
+```
+
+
+- 到此为止，有没有问题？
+
+
+---
+
+## 交叉验证
+
+- 对分类数据，应该计算准确率
+
+
+
+```
+## [1] 0.48
+```
+
+- 错误率接近50%，并不比机遇水平高到哪里去
+
+- 到此为止，有没有问题？
+
+
+
+---
+
+## 交叉验证
+
+- 过滤然后验证 vs. 验证时过滤
+
+- 每一个**"折"**都应该有自己的最优变量集合
+
+
+```r
+caret::createFolds(trn_data$y, k = 10)
+```
+
+```
+## $Fold01
+##  [1] 17 23 27 44 45 76 85 87 93 97
+## 
+## $Fold02
+##  [1]  6 14 15 26 37 38 55 68 69 71
+## 
+## $Fold03
+##  [1]  3  4  7 29 39 52 54 57 59 82
+## 
+## $Fold04
+##  [1] 19 21 40 46 48 56 73 78 91 96
+## 
+## $Fold05
+##  [1] 25 34 36 58 61 65 66 75 83 89
+## 
+## $Fold06
+##  [1]  2  9 10 62 74 79 80 90 92 98
+## 
+## $Fold07
+##  [1]  8 31 32 41 43 53 60 67 88 95
+## 
+## $Fold08
+##  [1] 12 18 33 35 42 49 51 64 84 94
+## 
+## $Fold09
+##  [1]  11  13  16  20  28  47  50  77  99 100
+## 
+## $Fold10
+##  [1]  1  5 22 24 30 63 70 72 81 86
+```
+
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+
+
+```r
+folds = caret::createFolds(trn_data$y, k = 10)
+
+fold_err = rep(0, length(folds))
+
+for (i in seq_along(folds)) {
+
+  trn_fold = trn_data[-folds[[i]], ]
+  val_fold = trn_data[folds[[i]], ]
+
+  correlations = apply(trn_fold[, -1], 2, cor, y = trn_fold[,1])
+  selected = order(abs(correlations), decreasing = TRUE)[1:25]
+  trn_fold_screen = trn_fold[ , c(1, selected)]
+  val_fold_screen = val_fold[ , c(1, selected)]
+
+  add_log_mod = glm(y ~ ., data = trn_fold_screen, family = "binomial")
+  add_log_prob = predict(add_log_mod, newdata = val_fold_screen, type = "response")
+  add_log_pred = ifelse(add_log_prob &gt; 0.5, yes = 1, no = 0)
+  fold_err[i] = mean(add_log_pred != val_fold_screen$y)
+  
+}
+
+fold_err
+```
+
+```
+##  [1] 0.4 0.9 0.6 0.4 0.6 0.3 0.7 0.5 0.6 0.6
+```
+
+```r
+mean(fold_err)
+```
+
+```
+## [1] 0.56
+```
+
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 先做个简单的复习
+
+
+$$
+`\begin{align}
+Var(X+Y) = Var(X) + Var(Y) + 2 Cov(X,Y)
+\\
+Var(cX) = c^2 Var(X)
+\\
+Cov(cX,Y) = Cov(X,cY) = c Cov(X,Y)
+\end{align}`
+$$
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 以风险最小确定X和Y的投资比例
+
+
+$$
+`\begin{align}
+Var(\alpha X + (1 - \alpha)Y)
+\\
+= Var(\alpha X) + Var((1 - \alpha) Y) + 2 Cov(\alpha X, (1 - \alpha) Y)
+\\
+= \alpha^2 Var(X) + (1 - \alpha)^2 Var(Y) + 2 \alpha (1 - \alpha) Cov(X, Y)
+\\
+= \sigma_X^2 \alpha^2 + \sigma_Y^2 (1 - \alpha)^2 + 2 \sigma_{XY} (-\alpha^2 +
+\alpha)
+\end{align}`
+$$
+
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 以风险最小确定X和Y的投资比例
+
+- 取其极值
+
+
+$$
+`\begin{align}
+0 = \frac {d} {d\alpha} f(\alpha)
+\\
+0 = 2 \sigma_X^2 \alpha + 2 \sigma_Y^2 (1 - \alpha) (-1) + 2 \sigma_{XY}
+(-2 \alpha + 1)
+\\
+0 = \sigma_X^2 \alpha + \sigma_Y^2 (\alpha - 1) + \sigma_{XY} (-2 \alpha + 1)
+\\
+0 = (\sigma_X^2 + \sigma_Y^2 - 2 \sigma_{XY}) \alpha - \sigma_Y^2 + \sigma_{XY}
+\\
+\alpha = \frac {\sigma_Y^2 - \sigma_{XY}}
+               {\sigma_X^2 + \sigma_Y^2 - 2 \sigma_{XY}}
+\end{align}`
+$$
+
+
+
+---
+
+## 自助法
+
+- 使用**ISLR**提供的数据计算得到 `\(\alpha\)`的值
+
+
+
+```r
+library(ISLR)
+?Portfolio
+nrow(Portfolio)
+```
+
+```
+## [1] 100
+```
+
+```r
+str(Portfolio)
+```
+
+```
+## 'data.frame':	100 obs. of  2 variables:
+##  $ X: num  -0.895 -1.562 -0.417 1.044 -0.316 ...
+##  $ Y: num  -0.235 -0.885 0.272 -0.734 0.842 ...
+```
+
+```r
+alpha.fn &lt;- function(data, index) {
+    X &lt;- data$X[index]
+    Y &lt;- data$Y[index]
+    (var(Y) - cov(X,Y)) / (var(X) +  var(Y) - 2*cov(X,Y))
+}
+alpha.fn(Portfolio, 1:100) 
+```
+
+```
+## [1] 0.5758321
+```
+
+
+
+
+---
+
+## 自助法
+
+- 比例 `\(\alpha\)`的值的稳定性如何？
+
+
+
+```r
+set.seed(1)
+alpha.fn(Portfolio, sample(100, 100, replace=T)) 
+```
+
+```
+## [1] 0.7368375
+```
+
+```r
+library(boot)
+set.seed(1)
+boot(Portfolio, alpha.fn, R=1000)
+```
+
+```
+## 
+## ORDINARY NONPARAMETRIC BOOTSTRAP
+## 
+## 
+## Call:
+## boot(data = Portfolio, statistic = alpha.fn, R = 1000)
+## 
+## 
+## Bootstrap Statistics :
+##      original       bias    std. error
+## t1* 0.5758321 -0.001596422  0.09376093
+```
+
+
+
+
+
+---
+
+## 自助法
+
+
+- 回归分析里估计系数标准误
+
+
+```r
+boot.fn &lt;- function(data, index) {
+    coef(lm(mpg~horsepower, data=data, subset=index))
+}
+boot.fn(Auto,1:392)
+```
+
+```
+## (Intercept)  horsepower 
+##  39.9358610  -0.1578447
+```
+
+```r
+set.seed(1)
+boot.fn(Auto, sample(392,392,replace=T))
+```
+
+```
+## (Intercept)  horsepower 
+##  40.3404517  -0.1634868
+```
+
+```r
+boot.fn(Auto, sample(392,392,replace=T))
+```
+
+```
+## (Intercept)  horsepower 
+##  40.1186906  -0.1577063
+```
+
+
+---
+
+## 自助法
+
+
+- 回归分析里估计系数标准误
+
+
+```r
+boot.fn &lt;- function(data, index) {
+    coef(lm(mpg~horsepower, data=data, subset=index))
+}
+set.seed(1)
+boot(Auto, boot.fn, 1000)
+```
+
+```
+## 
+## ORDINARY NONPARAMETRIC BOOTSTRAP
+## 
+## 
+## Call:
+## boot(data = Auto, statistic = boot.fn, R = 1000)
+## 
+## 
+## Bootstrap Statistics :
+##       original        bias    std. error
+## t1* 39.9358610  0.0553942585 0.843931305
+## t2* -0.1578447 -0.0006285291 0.007367396
+```
+
+---
+
+## 自助法
+
+- 解析法得到的系数标准误
+
+
+```r
+summary(lm(mpg~horsepower, data=Auto))
+```
+
+```
+## 
+## Call:
+## lm(formula = mpg ~ horsepower, data = Auto)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -13.5710  -3.2592  -0.3435   2.7630  16.9240 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 39.935861   0.717499   55.66   &lt;2e-16 ***
+## horsepower  -0.157845   0.006446  -24.49   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 4.906 on 390 degrees of freedom
+## Multiple R-squared:  0.6059,	Adjusted R-squared:  0.6049 
+## F-statistic: 599.7 on 1 and 390 DF,  p-value: &lt; 2.2e-16
+```
+
+
+
+
+
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
