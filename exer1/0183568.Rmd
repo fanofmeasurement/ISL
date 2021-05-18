@@ -1,0 +1,158 @@
+---
+title: "0183568 韩琪"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, echo = TRUE)
+```
+
+## Q8
+```{r cars}
+library(ISLR)
+data(package="ISLR")
+```
+
+### a)
+```{r }
+Auto = na.omit(Auto)
+Auto
+attach(Auto)
+lm.fit = lm(mpg ~ horsepower)
+summary(lm.fit)
+predict(lm.fit, data.frame(horsepower=c(98)), interval="confidence")
+predict(lm.fit, data.frame(horsepower=c(98)), interval="prediction")
+```
+i.由summary的结果来看，F-statistic很大而p-value很小，说明两者是有相关性的。
+ii.由书的54页可知，看拟合效果如何，得看RSE和R-square。R-square为0.6059，这说明Y的变异中能被X解释的部分所占比例有60.59%
+iii.由拟合出的参数可知，负相关。
+iv.结果是24.47，置信区间是(23.97, 24.96)；预测区间是(14.81, 34.12)
+
+
+
+### b)
+```{r }
+plot(horsepower, mpg)
+abline(lm.fit)
+```
+
+### c)
+```{r }
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+
+## Q9
+```{r cars}
+library(ISLR)
+data(package="ISLR")
+```
+
+### a)
+```{r }
+Auto = na.omit(Auto)
+Auto
+pairs(Auto)
+```
+
+### b)
+```{r }
+cor(subset(Auto, select=-name))
+```
+
+### c)
+```{r }
+lm.fit1 = lm(mpg~.-name, data=Auto)
+summary(lm.fit1)
+```
+i.有。有f-statistic和p-value值可以判断
+ii.由p-value小于0.05可知，displacement, weight, year, and origin这几个预测变量和响应变量有显著关系。
+iii.车龄变量的系数是0.75，这说明随着车龄的增加，车子会越来越耗油。
+
+### d)
+```{r }
+par(mfrow=c(2,2))
+plot(lm.fit1)
+plot(predict(lm.fit1), rstudent(lm.fit1))
+```
+
+### e)
+```{r }
+lm.fit2 = lm(mpg~cylinders*displacement+displacement*weight)
+summary(lm.fit2)
+```
+
+### f)
+```{r }
+lm.fit3 = lm(mpg~log(weight)+sqrt(horsepower)+acceleration+I(acceleration^2))
+summary(lm.fit3)
+
+par(mfrow=c(2,2))
+plot(lm.fit3)
+
+plot(predict(lm.fit3), rstudent(lm.fit3))
+
+lm.fit2<-lm(log(mpg)~cylinders+displacement+horsepower+weight+acceleration+year+origin,data=Auto)
+summary(lm.fit2)
+
+par(mfrow=c(2,2)) 
+plot(lm.fit2)
+
+plot(predict(lm.fit2),rstudent(lm.fit2))
+
+```
+
+
+## Q10
+### a)
+```{r }
+library(ISLR)
+summary(Carseats)
+
+attach(Carseats)
+lm.fit = lm(Sales~Price+Urban+US)
+summary(lm.fit)
+
+```
+
+### b)
+由summary(lm.fit)的结果的p-value和t-statistic可知，Price和US与Sales有关，Urban和Sales无关。
+
+### c)
+Sales = 13.04 + -0.05*Price - 0.02*Urban + 1.20*US，其中Urban和US为YES时，值为1，否则为0。
+
+### d)
+Price and US
+
+### e)
+```{r }
+lm.fit2 = lm(Sales~Price+US)
+summary(lm.fit2)
+```
+
+### f)
+(a)中Multiple R-squared:  0.239,  Adjusted R-squared:  0.234，(e)中Multiple R-squared:  0.239,  Adjusted R-squared:  0.235 ，可知两者拟合度差不多，而(e)稍微好点.
+
+### g)
+```{r }
+confint(lm.fit2)
+
+```
+
+### h)
+```{r }
+plot(predict(lm.fit2), rstudent(lm.fit2))
+```
+通过这个命令得到的图，我们可知，stuendtize residuals的范围在-3到3之间，所以没有离群点
+
+```{r }
+par(mfrow=c(2,2))
+plot(lm.fit2)
+```
+通过这个命令得到的图，我们可知，有一些点远远超过了其他点，故存在高杆点
+
