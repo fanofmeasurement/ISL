@@ -1,0 +1,729 @@
+
+
+---
+title: "重抽样方法"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    html_document:
+      mathjax: "http://example.com/MathJax.js"
+---
+
+
+
+```{r setup, include=FALSE, dev="CairoPNG"}
+library("Cairo")
+library("ElemStatLearn")
+library("mlr")
+library("ggplot2")
+library("ISLR")
+library("ggplot2")
+library("MASS")
+require("plotly")
+library("plotly")
+knitr::opts_chunk$set(dev="CairoPNG")
+set.seed(3)
+```
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+```{css, echo = FALSE}
+.math.inline {
+}
+```
+
+
+
+### 重抽样方法
+
+1. 交叉验证
+
+2. bootstrap
+
+
+
+
+
+---
+
+class: center, middle
+
+## 1. 交叉验证
+
+
+
+---
+
+## 交叉验证
+
+- 已经接触过交叉验证，之前我们把数据集按照5:5分成训练集和测试集，但是也可以按照不同的比例进行划分。
+
+- 比如，我们定义一个数据：
+
+$$
+Y \sim N(\mu = x^3, \sigma^2 = 0.25 ^ 2)
+$$
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+gen_sim_data = function(sample_size) {
+  x = runif(n = sample_size, min = -1, max = 1)
+  y = rnorm(n = sample_size, mean = x ^ 3, sd = 0.25)
+  data.frame(x, y)
+}
+set.seed(42)
+sim_data = gen_sim_data(sample_size = 200)
+```
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 这次按照8:2来分
+
+- 画出训练数据的散点图和真实函数
+
+```{r echo = FALSE, message= FALSE, fig.height=6, fig.width=10}
+sim_idx  = sample(1:nrow(sim_data), 160)
+sim_trn  = sim_data[sim_idx, ]
+sim_val  = sim_data[-sim_idx, ]
+plot(y ~ x, data = sim_trn, col = "dodgerblue", pch = 20)
+grid()
+curve(x ^ 3, add = TRUE, col = "black", lwd = 2)
+```
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 如果只有训练集，容易得到一个most flexible model，一个最“合身”的模型
+
+- 选择了一个10阶多项式模型
+
+- 需要测试集来检验模型的泛化能力
+
+```{r echo = TRUE, message= TRUE, fig.height=5, fig.width=10}
+calc_mse = function(actual, predicted) {
+  mean((actual - predicted) ^ 2)
+}
+
+fit = lm(y ~ poly(x, 10), data = sim_trn)
+
+calc_mse(actual = sim_trn$y, predicted = predict(fit, sim_trn))
+calc_mse(actual = sim_val$y, predicted = predict(fit, sim_val))
+
+```
+
+
+
+---
+
+## 交叉验证
+
+- 模型
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+summary(fit)
+```
+
+
+
+
+---
+
+## 交叉验证
+
+
+- 如果我们把多项式模型从1阶到10阶都试一遍会怎么样？
+
+- 系统改变多项式模型阶数的过程就被称为**调参(tuning parameter)**
+
+- 模拟了多少次？
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+num_sims = 100
+num_degrees = 10
+val_mse = matrix(0, ncol = num_degrees, nrow = num_sims)
+
+set.seed(42)
+
+for (i in 1:num_sims) {
+  sim_data = gen_sim_data(sample_size = 200)
+  sim_idx = sample(1:nrow(sim_data), 160)
+  sim_trn = sim_data[sim_idx, ]
+  sim_val = sim_data[-sim_idx, ]
+
+  for (j in 1:num_degrees) {
+    fit = glm(y ~ poly(x, degree = j), data = sim_trn)
+    val_mse[i, j] = calc_mse(actual = sim_val$y, predicted = predict(fit, sim_val))
+  }
+}
+```
+
+
+
+
+---
+
+## 交叉验证
+
+- 左图显示了几次模拟的结果？
+
+- 右图的含义是什么？
+
+```{r echo = FALSE, message= FALSE, fig.height=6, fig.width=10}
+par(mfrow = c(1, 2))
+matplot(t(val_mse)[, 1:10], pch = 20, type = "b", ylim = c(0.0, 0.15), xlab = "Polynomial Degree", ylab = "MSE", main = "MSE vs Degree")
+barcol = c("grey", "grey", "dodgerblue", "grey", "grey", "grey", "grey", "grey", "grey", "grey")
+barplot(table(factor(apply(val_mse, 1, which.min), levels = 1:10)),
+        ylab = "Times Chosen", xlab = "Polynomial Degree", col = barcol, main = "Model Chosen vs Degree")
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 如何理解这个结果？
+
+- 为什么要使用 $k$折交叉？
+
+```{r echo = FALSE, message= FALSE, fig.height=6, fig.width=10}
+par(mfrow = c(1, 2))
+matplot(t(val_mse)[, 1:10], pch = 20, type = "b", ylim = c(0.0, 0.15), xlab = "Polynomial Degree", ylab = "MSE", main = "MSE vs Degree")
+barcol = c("grey", "grey", "dodgerblue", "grey", "grey", "grey", "grey", "grey", "grey", "grey")
+barplot(table(factor(apply(val_mse, 1, which.min), levels = 1:10)),
+        ylab = "Times Chosen", xlab = "Polynomial Degree", col = barcol, main = "Model Chosen vs Degree")
+```
+
+
+---
+
+## 交叉验证
+
+- $k$折交叉验证
+
+
+$$
+MSE-CV_{K} = \sum\frac{n_k}{n} MSE_k
+$$
+
+$$
+MSE_k = \frac{1}{n_k} \sum \left( y_i - \hat{f}^{-k}(x_i) \right)^2
+$$
+- 符号 $n_k$是第 $k$ 折时观测值的个数
+- 符号 $\hat{f}^{-k}()$ 是没有使用第 $k$折数据时训练得到的模型
+
+
+如果每折的观测值个数 $n_k$都相等，则：
+
+$$
+MSE-CV_{K} = \frac{1}{K}\sum MSE_k
+$$
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+- R中有很多方式可以做交叉验证，取决于统计学习方法
+
+    - **glm()**中的`boot::cv.glm()`
+    - **knn()`**中的`knn.cv()`
+    
+- 以`boot::cv.glm()`为例，其缺省设置是**留一法**，每次只用一个观测值来进行验证
+    
+    - 当然可以用5折或10折
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+glm_fit = glm(y ~ poly(x, 3), data = sim_trn)
+coef(glm_fit)
+boot::cv.glm(sim_trn, glm_fit)$delta
+boot::cv.glm(sim_trn, glm_fit, K = 5)$delta
+```
+
+
+
+
+---
+
+## 交叉验证
+
+- 重复之前的模拟过程
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+cv_mse = matrix(0, ncol = num_degrees, nrow = num_sims)
+
+set.seed(42)
+for (i in 1:num_sims) {
+  # simulate data, use all data for training
+  sim_trn = gen_sim_data(sample_size = 200)
+  # fit models and store RMSE
+  for (j in 1:num_degrees) {
+    #fit model
+    fit = glm(y ~ poly(x, degree = j), data = sim_trn)
+    # calculate error
+    cv_mse[i, j] = boot::cv.glm(sim_trn, fit, K = 5)$delta[1]
+  }
+}
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 和只有一个验证集的结果进行比较
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+par(mfrow = c(1, 2))
+max_correct = max(max(table(apply(val_mse, 1, which.min))), max(table(apply(cv_mse, 1, which.min))))
+barcol = c("grey", "grey", "dodgerblue", "grey", "grey", "grey", "grey", "grey", "grey", "grey")
+barplot(table(factor(apply(val_mse, 1, which.min), levels = 1:10)), ylim = c(0, max_correct), 
+        ylab = "Times Chosen", xlab = "Polynomial Degree", col = barcol, main = "Single Validation Set")
+barplot(table(factor(apply(cv_mse,  1, which.min), levels = 1:10)), ylim = c(0, max_correct), 
+        ylab = "Times Chosen", xlab = "Polynomial Degree", col = barcol, main = "5-Fold Cross-Validation")
+```
+
+
+
+
+---
+
+## 交叉验证
+
+- 和只有一个验证集的结果进行比较
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+par(mfrow = c(1, 2))
+matplot(t(val_mse)[, 1:10], pch = 20, type = "b", ylim = c(0.0, 0.15), xlab = "Polynomial Degree", ylab = "MSE", main = "Single Validation Set")
+matplot(t(cv_mse)[, 1:10],  pch = 20, type = "b", ylim = c(0.0, 0.15), xlab = "Polynomial Degree", ylab = "MSE", main = "5-Fold Cross-Validation")
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- - 和只有一个验证集的结果进行比较
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+results = data.frame(
+  degree = 1:10,
+  colMeans(val_mse),
+  apply(val_mse, 2, sd),
+  colMeans(cv_mse),
+  apply(cv_mse, 2, sd)
+)
+colnames(results) = c(
+  "Polynomial Degree",
+  "Mean, Val",
+  "SD, Val",
+  "Mean, CV",
+  "SD, CV"
+)
+
+knitr::kable(results, digits = 3)
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 考虑分类问题
+
+$$
+Y \sim \text{bern}(p = 0.5)
+$$
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+calc_err = function(actual, predicted) {
+  mean(actual != predicted)
+}
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 模拟一个特殊的例子
+
+- 有10000个预测变量，每个都服从标准正态分布
+
+
+$$
+X_j \sim N(\mu = 0, \sigma^2 = 1)
+$$
+
+- 但是，只有200个观测值
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+set.seed(42)
+n = 200
+p = 10000
+x = replicate(p, rnorm(n))
+y = c(rbinom(n = n, size = 1, prob = 0.5))
+full_data = data.frame(y, x)
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 考虑用一半数据做验证集，一半做训练集
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+trn_idx  = sample(1:nrow(full_data), trunc(nrow(full_data) * 0.5))
+trn_data = full_data[trn_idx,   ]
+tst_data = full_data[-trn_idx, ]
+```
+
+
+- 使用**logistic regression**，但是 $p>n$，只能选择一部分变量进入回归方程
+
+
+---
+
+## 交叉验证
+
+- 如何选？
+
+    - 先做相关
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+correlations = apply(trn_data[, -1], 2, cor, y = trn_data$y)
+hist(correlations, col = "grey", border = "dodgerblue")
+
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 有些变量相关很低，选择相关最高的前25个
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+selected = order(abs(correlations), decreasing = TRUE)[1:25]
+correlations[selected]
+```
+
+
+
+
+
+---
+
+## 交叉验证
+
+- 基于这25个变量分别构建训练集和测试集
+
+- 计算得到**MSE**的值
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+trn_screen = trn_data[c(1, selected)]
+tst_screen = tst_data[c(1, selected)]
+add_log_mod = glm(y ~ ., data = trn_screen, family = "binomial")
+boot::cv.glm(trn_screen, add_log_mod, K = 10)$delta[1]
+```
+
+
+- 到此为止，有没有问题？
+
+
+---
+
+## 交叉验证
+
+- 对分类数据，应该计算准确率
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+add_log_pred = (predict(add_log_mod, newdata = tst_screen, type = "response") > 0.5) * 1
+calc_err(predicted = add_log_pred, actual = tst_screen$y)
+```
+
+- 错误率接近50%，并不比机遇水平高到哪里去
+
+- 到此为止，有没有问题？
+
+
+
+---
+
+## 交叉验证
+
+- 过滤然后验证 vs. 验证时过滤
+
+- 每一个**"折"**都应该有自己的最优变量集合
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+caret::createFolds(trn_data$y, k = 10)
+```
+
+
+
+
+
+
+
+---
+
+## 交叉验证
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+folds = caret::createFolds(trn_data$y, k = 10)
+
+fold_err = rep(0, length(folds))
+
+for (i in seq_along(folds)) {
+
+  trn_fold = trn_data[-folds[[i]], ]
+  val_fold = trn_data[folds[[i]], ]
+
+  correlations = apply(trn_fold[, -1], 2, cor, y = trn_fold[,1])
+  selected = order(abs(correlations), decreasing = TRUE)[1:25]
+  trn_fold_screen = trn_fold[ , c(1, selected)]
+  val_fold_screen = val_fold[ , c(1, selected)]
+
+  add_log_mod = glm(y ~ ., data = trn_fold_screen, family = "binomial")
+  add_log_prob = predict(add_log_mod, newdata = val_fold_screen, type = "response")
+  add_log_pred = ifelse(add_log_prob > 0.5, yes = 1, no = 0)
+  fold_err[i] = mean(add_log_pred != val_fold_screen$y)
+  
+}
+
+fold_err
+mean(fold_err)
+```
+
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 先做个简单的复习
+
+
+$$
+\begin{align}
+Var(X+Y) = Var(X) + Var(Y) + 2 Cov(X,Y)
+\\
+Var(cX) = c^2 Var(X)
+\\
+Cov(cX,Y) = Cov(X,cY) = c Cov(X,Y)
+\end{align}
+$$
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 以风险最小确定X和Y的投资比例
+
+
+$$
+\begin{align}
+Var(\alpha X + (1 - \alpha)Y)
+\\
+= Var(\alpha X) + Var((1 - \alpha) Y) + 2 Cov(\alpha X, (1 - \alpha) Y)
+\\
+= \alpha^2 Var(X) + (1 - \alpha)^2 Var(Y) + 2 \alpha (1 - \alpha) Cov(X, Y)
+\\
+= \sigma_X^2 \alpha^2 + \sigma_Y^2 (1 - \alpha)^2 + 2 \sigma_{XY} (-\alpha^2 +
+\alpha)
+\end{align}
+$$
+
+
+
+---
+
+## 自助法
+
+
+- 书上举了一个量化投资的例子
+
+- 以风险最小确定X和Y的投资比例
+
+- 取其极值
+
+
+$$
+\begin{align}
+0 = \frac {d} {d\alpha} f(\alpha)
+\\
+0 = 2 \sigma_X^2 \alpha + 2 \sigma_Y^2 (1 - \alpha) (-1) + 2 \sigma_{XY}
+(-2 \alpha + 1)
+\\
+0 = \sigma_X^2 \alpha + \sigma_Y^2 (\alpha - 1) + \sigma_{XY} (-2 \alpha + 1)
+\\
+0 = (\sigma_X^2 + \sigma_Y^2 - 2 \sigma_{XY}) \alpha - \sigma_Y^2 + \sigma_{XY}
+\\
+\alpha = \frac {\sigma_Y^2 - \sigma_{XY}}
+               {\sigma_X^2 + \sigma_Y^2 - 2 \sigma_{XY}}
+\end{align}
+$$
+
+
+
+---
+
+## 自助法
+
+- 使用**ISLR**提供的数据计算得到 $\alpha$的值
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+library(ISLR)
+?Portfolio
+nrow(Portfolio)
+str(Portfolio)
+alpha.fn <- function(data, index) {
+    X <- data$X[index]
+    Y <- data$Y[index]
+    (var(Y) - cov(X,Y)) / (var(X) +  var(Y) - 2*cov(X,Y))
+}
+alpha.fn(Portfolio, 1:100) 
+```
+
+
+
+
+---
+
+## 自助法
+
+- 比例 $\alpha$的值的稳定性如何？
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+set.seed(1)
+alpha.fn(Portfolio, sample(100, 100, replace=T)) 
+library(boot)
+set.seed(1)
+boot(Portfolio, alpha.fn, R=1000)
+```
+
+
+
+
+
+---
+
+## 自助法
+
+
+- 回归分析里估计系数标准误
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+boot.fn <- function(data, index) {
+    coef(lm(mpg~horsepower, data=data, subset=index))
+}
+boot.fn(Auto,1:392)
+
+set.seed(1)
+boot.fn(Auto, sample(392,392,replace=T))
+boot.fn(Auto, sample(392,392,replace=T))
+
+
+```
+
+
+---
+
+## 自助法
+
+
+- 回归分析里估计系数标准误
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+boot.fn <- function(data, index) {
+    coef(lm(mpg~horsepower, data=data, subset=index))
+}
+set.seed(1)
+boot(Auto, boot.fn, 1000)
+
+```
+
+---
+
+## 自助法
+
+- 解析法得到的系数标准误
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+summary(lm(mpg~horsepower, data=Auto))
+```
+
+
+
+
+
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
