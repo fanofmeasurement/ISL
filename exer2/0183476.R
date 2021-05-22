@@ -1,24 +1,22 @@
-#10.
-#£¨a)
+#10.Weeklyæ•°æ®é›†åˆ†æ 
+#a)
 library(ISLR)
 summary(Weekly)
+pairs(Weekly)
 cor(Weekly[,-9])
-pairs(Weekly)
-dev.new()
-pairs(Weekly)
-#·¢ÏÖYearºÍVolume¾ßÓĞÏà¹ØĞÔ
-#(b)
+#å‘ç°Yearå’ŒVolumeå…·æœ‰ç›¸å…³æ€§ã€‚ 
+#bï¼‰
 attach(Weekly)
 glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
 summary(glm.fit)
-#Lag2ÔÚÍ³¼ÆÉÏ¸üÏÔÖø£¬Pr(>|z|) =0.0296
-#(c)
+#Lag2åœ¨ç»Ÿè®¡ä¸Šæ›´æ˜¾è‘—ï¼Œå› ä¸ºPr(>|z|) =0.0296 
+#c)
 glm.probs=predict(glm.fit,type="response")
 glm.pred=rep("Down",length(glm.probs))
 glm.pred[glm.probs>0.5]="Up"
 table(glm.pred,Direction)
-#Ô¤²â×¼È·ÂÊÎª(54+557)/(54+48+430+557)=0.56£¬µ±Ô¤²âweakÔö¼ÓÊ±£¬ÕıÈ·ÂÊÎª557/(557+48)=92.1%,µ±Ô¤²âweak¼õÉÙÊ±ÕıÈ·ÂÊÎª54/(430+54)=11.2%
-#(d)
+#é¢„æµ‹å‡†ç¡®ç‡ä¸º(54+557)/(54+48+430+557)=0.56ï¼Œå½“é¢„æµ‹weakå¢åŠ æ—¶ï¼Œæ­£ç¡®ç‡ä¸º557/(557+48)=92.1%,å½“é¢„æµ‹weakå‡å°‘æ—¶æ­£ç¡®ç‡ä¸º54/(430+54)=11.2% 
+#d)
 train=(Year<2009)
 Weekly.0910=Weekly[!train,]
 glm.fit=glm(Direction~Lag2,data=Weekly,family=binomial,subset=train)
@@ -28,19 +26,18 @@ glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
 mean(glm.pred==Direction.0910)
-#×ÜÌåÔ¤²â×¼È·ÂÊÎå0.625
-#£¨e£©
+#e)åº”ç”¨LDAé‡å¤(d)çš„è¿‡ç¨‹
 library(MASS)
 lda.fit=lda(Direction~Lag2,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
 mean(lda.pred$class == Direction.0910)
-#(f)
+#f)åº”ç”¨QDAé‡å¤(d)çš„è¿‡ç¨‹
 qda.fit=qda(Direction~Lag2,data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
 mean(qda.class==Direction.0910)
-#(g)
+#g)
 library(class)
 train.X=as.matrix(Lag2[train])
 test.X=as.matrix(Lag2[!train])
@@ -49,9 +46,10 @@ set.seed(1)
 knn.pred=knn(train.X,test.X,train.Direction,k=1)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#(h)Âß¼­»Ø¹éºÍLDA¾ßÓĞ×î¸ßµÄÕıÈ·ÂÊ
-#(i)
-#Âß¼­»Ø¹éºÍLDA¾ßÓĞ×î¸ßµÄÕıÈ·ÂÊ
+#h) 
+#é€»è¾‘å›å½’å’ŒLDAå…·æœ‰æœ€é«˜çš„æ­£ç¡®ç‡ 
+#i) 
+#é€»è¾‘å›å½’ Lag2ä¸Lag1ç›¸å…³
 glm.fit=glm(Direction~Lag2:Lag1,data=Weekly,family=binomial,subset=train)
 glm.probs=predict(glm.fit,Weekly.0910,type="response")
 glm.pred=rep("Down",length(glm.probs))
@@ -59,69 +57,72 @@ glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
 mean(glm.pred==Direction.0910)
-#LDALag2ÓëLag1Ïà¹Ø
+#LDA Lag2ä¸Lag1ç›¸å…³
 lda.fit=lda(Direction~Lag2:Lag1,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
-#QDA Lag2Óësqrt(abs(Lag2))
+mean(lda.pred$class==Direction.0910)
+#QDA Lag2ä¸sqrt(abs(Lag2))
 qda.fit=qda(Direction~Lag2+sqrt(abs(Lag2)),data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
-#k=10
+mean(qda.class==Direction.0910)
+#K=10
 knn.pred=knn(train.X,test.X,train.Direction,k=10)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#k=100
+#K=100
 knn.pred=knn(train.X,test.X,train.Direction,k=100)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#ÒÀ¾ÉÊÇÔ­À´µÄLDAºÍÂß¼­»Ø¹éÕıÈ·ÂÊ×î¸ß
-#11
-#(a)
+#ä¾æ—§æ˜¯åŸæ¥çš„LDAå’Œé€»è¾‘å›å½’æ­£ç¡®ç‡æœ€é«˜
+
+#11.Autoæ•°æ®é›† æ±½è½¦ä¸æ¯å…¬é‡Œæ²¹è€—é«˜ä½é¢„æµ‹ 
+#a)
 library(ISLR)
 summary(Auto)
 attach(Auto)
 mpg01=rep(0,length(mpg))
 mpg01[mpg>median(mpg)]=1
 Auto=data.frame(Auto,mpg01)
-#(b)
+#b)
 cor(Auto[,-9])
 pairs(Auto)
-#cylinders, weight, displacement, horsepower ÓĞºÜ´óµÄ¿ÉÄÜÏà¹Ø¡£
-#(c)
+#cylinders, weight, displacement, horsepower æœ‰å¾ˆå¤§çš„å¯èƒ½ç›¸å…³ã€‚ 
+#c)
 train=(year%%2==0)
 test=!train
 Auto.train=Auto[train,]
 Auto.test=Auto[test,]
 mpg01.test=mpg01[test]
-#(d)
+#d)
 library(MASS)
 lda.fit=lda(mpg01~cylinders+weight+displacement+horsepower,data=Auto,subset=train)
 lda.pred=predict(lda.fit,Auto.test)
 mean(lda.pred$class!=mpg01.test)
-#(e)
+#e)
 qda.fit=qda(mpg01~cylinders+weight+displacement+horsepower,data=Auto,subset=train)
 qda.pred=predict(qda.fit,Auto.test)
 mean(qda.pred$class!=mpg01.test)
-#(f)
+#f)
 glm.fit=glm(mpg01~cylinders+weight+displacement+horsepower,data=Auto,family=binomial,subset=train)
 glm.probs=predict(glm.fit,Auto.test,type="response")
 glm.pred=rep(0,length(glm.probs))
 glm.pred[glm.probs>0.5]=1
 mean(glm.pred!=mpg01.test)
-#(g)
+#g)
 library(class)
 train.X=cbind(cylinders,weight,displacement,horsepower)[train,]
 test.X=cbind(cylinders,weight,displacement,horsepower)[test,]
 train.mpg01=mpg01[train]
 set.seed(1)
 #k=1
-knn.pred=knn(train.X,test.X,train.mpg01,k=1)
-mean(knn.pred != mpg01.test)
-#k-5
-knn.pred=knn(train.X,test.X,train.mpg01,k=5)
-mean(knn.pred != mpg01.test)
-#k=10
-knn.pred=knn(train.X,test.X,train.mpg01,k=10)
-mean(knn.pred != mpg01.test)
-#k=5Ê±Ğ§¹û×îºÃ
+knn.pred=knn(train.X,test.X,train.mpg01,k=1) 
+mean(knn.pred != mpg01.test) 
+#k=5 
+knn.pred=knn(train.X,test.X,train.mpg01,k=5) 
+mean(knn.pred != mpg01.test) 
+#k=10 
+knn.pred=knn(train.X,test.X,train.mpg01,k=10) 
+mean(knn.pred != mpg01.test) 
+#k=5æ—¶å¯èƒ½æœ€å¥½

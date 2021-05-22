@@ -1,24 +1,21 @@
-#10.
-#（a)
+#10
 library(ISLR)
 summary(Weekly)
+pairs(Weekly)
 cor(Weekly[,-9])
-pairs(Weekly)
-dev.new()
-pairs(Weekly)
-#发现Year和Volume具有相关性
-#(b)
-attach(Weekly)
-glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
+#Year和Volume具有相关性
+#10.b
+glm.fit = glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume, data = Weekly, family = binomial)
 summary(glm.fit)
-#Lag2在统计上更显著，Pr(>|z|) =0.0296
-#(c)
-glm.probs=predict(glm.fit,type="response")
-glm.pred=rep("Down",length(glm.probs))
+#lag2是显著的
+#10.c
+glm.probs = predict(glm.fit, type = "response")
+glm.pred = rep("Down", length(glm.probs))
 glm.pred[glm.probs>0.5]="Up"
 table(glm.pred,Direction)
-#预测准确率为(54+557)/(54+48+430+557)=0.56，当预测weak增加时，正确率为557/(557+48)=92.1%,当预测weak减少时正确率为54/(430+54)=11.2%
-#(d)
+mean(glm.pred==Direction)
+#混淆矩阵的预测准确率为0.56
+#10.d
 train=(Year<2009)
 Weekly.0910=Weekly[!train,]
 glm.fit=glm(Direction~Lag2,data=Weekly,family=binomial,subset=train)
@@ -28,19 +25,21 @@ glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
 mean(glm.pred==Direction.0910)
-#总体预测准确率五0.625
-#（e）
+#准确率为0.625
+#10.e
 library(MASS)
 lda.fit=lda(Direction~Lag2,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
 mean(lda.pred$class == Direction.0910)
-#(f)
+#准确率为0/625
+#10.f
 qda.fit=qda(Direction~Lag2,data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
 mean(qda.class==Direction.0910)
-#(g)
+#准确率为0.59
+#10.g
 library(class)
 train.X=as.matrix(Lag2[train])
 test.X=as.matrix(Lag2[!train])
@@ -49,9 +48,10 @@ set.seed(1)
 knn.pred=knn(train.X,test.X,train.Direction,k=1)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#(h)逻辑回归和LDA具有最高的正确率
-#(i)
-#逻辑回归和LDA具有最高的正确率
+#准确率为0.5
+#10.h 逻辑斯蒂回归和LDA结果最好
+#10.i
+#逻辑斯蒂回归
 glm.fit=glm(Direction~Lag2:Lag1,data=Weekly,family=binomial,subset=train)
 glm.probs=predict(glm.fit,Weekly.0910,type="response")
 glm.pred=rep("Down",length(glm.probs))
@@ -59,57 +59,60 @@ glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
 mean(glm.pred==Direction.0910)
-#LDALag2与Lag1相关
+#LDA
 lda.fit=lda(Direction~Lag2:Lag1,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
-#QDA Lag2与sqrt(abs(Lag2))
+mean(lda.pred$class==Direction.0910)
+#QDA
 qda.fit=qda(Direction~Lag2+sqrt(abs(Lag2)),data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
-#k=10
+mean(qda.class==Direction.0910)
+#K=10
 knn.pred=knn(train.X,test.X,train.Direction,k=10)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#k=100
+#K=100
 knn.pred=knn(train.X,test.X,train.Direction,k=100)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
-#依旧是原来的LDA和逻辑回归正确率最高
-#11
-#(a)
+#最好的方法是逻辑斯蒂回归
+
+#11.a
 library(ISLR)
-summary(Auto)
 attach(Auto)
 mpg01=rep(0,length(mpg))
 mpg01[mpg>median(mpg)]=1
 Auto=data.frame(Auto,mpg01)
-#(b)
-cor(Auto[,-9])
+#11.b
 pairs(Auto)
-#cylinders, weight, displacement, horsepower 有很大的可能相关。
-#(c)
+#cylinders, weight, displacement, horsepower 有很大的可能相关
+#11.c
 train=(year%%2==0)
 test=!train
 Auto.train=Auto[train,]
 Auto.test=Auto[test,]
 mpg01.test=mpg01[test]
-#(d)
+#11.d
 library(MASS)
 lda.fit=lda(mpg01~cylinders+weight+displacement+horsepower,data=Auto,subset=train)
 lda.pred=predict(lda.fit,Auto.test)
 mean(lda.pred$class!=mpg01.test)
-#(e)
+#测试误差为0.126
+#11.e
 qda.fit=qda(mpg01~cylinders+weight+displacement+horsepower,data=Auto,subset=train)
 qda.pred=predict(qda.fit,Auto.test)
 mean(qda.pred$class!=mpg01.test)
-#(f)
+#测试误差为0.132
+#11.f
 glm.fit=glm(mpg01~cylinders+weight+displacement+horsepower,data=Auto,family=binomial,subset=train)
 glm.probs=predict(glm.fit,Auto.test,type="response")
 glm.pred=rep(0,length(glm.probs))
 glm.pred[glm.probs>0.5]=1
 mean(glm.pred!=mpg01.test)
-#(g)
+#测试误差为0.121
+#11.g
 library(class)
 train.X=cbind(cylinders,weight,displacement,horsepower)[train,]
 test.X=cbind(cylinders,weight,displacement,horsepower)[test,]
@@ -118,10 +121,10 @@ set.seed(1)
 #k=1
 knn.pred=knn(train.X,test.X,train.mpg01,k=1)
 mean(knn.pred != mpg01.test)
-#k-5
+#k=5
 knn.pred=knn(train.X,test.X,train.mpg01,k=5)
 mean(knn.pred != mpg01.test)
 #k=10
 knn.pred=knn(train.X,test.X,train.mpg01,k=10)
 mean(knn.pred != mpg01.test)
-#k=5时效果最好
+#k=5时时KNN 在数据集上效果最好

@@ -1,12 +1,8 @@
-#10.
-#（a)
+#(a)
 library(ISLR)
 summary(Weekly)
 cor(Weekly[,-9])
-pairs(Weekly)
-dev.new()
-pairs(Weekly)
-#发现Year和Volume具有相关性
+#发现Year和Volume具有相关性。
 #(b)
 attach(Weekly)
 glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
@@ -17,7 +13,8 @@ glm.probs=predict(glm.fit,type="response")
 glm.pred=rep("Down",length(glm.probs))
 glm.pred[glm.probs>0.5]="Up"
 table(glm.pred,Direction)
-#预测准确率为(54+557)/(54+48+430+557)=0.56，当预测weak增加时，正确率为557/(557+48)=92.1%,当预测weak减少时正确率为54/(430+54)=11.2%
+#预测准确率为(54+557)/(54+48+430+557)=0.56，
+#当预测weak增加时，正确率为557/(557+48)=92.1%,当预测weak减少时正确率为54/(430+54)=11.2%
 #(d)
 train=(Year<2009)
 Weekly.0910=Weekly[!train,]
@@ -27,19 +24,15 @@ glm.pred=rep("Down",length(glm.probs))
 glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
-mean(glm.pred==Direction.0910)
-#总体预测准确率五0.625
-#（e）
+#(e)
 library(MASS)
 lda.fit=lda(Direction~Lag2,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
-mean(lda.pred$class == Direction.0910)
 #(f)
 qda.fit=qda(Direction~Lag2,data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
-mean(qda.class==Direction.0910)
 #(g)
 library(class)
 train.X=as.matrix(Lag2[train])
@@ -48,10 +41,11 @@ train.Direction=Direction[train]
 set.seed(1)
 knn.pred=knn(train.X,test.X,train.Direction,k=1)
 table(knn.pred,Direction.0910)
-mean(knn.pred==Direction.0910)
-#(h)逻辑回归和LDA具有最高的正确率
-#(i)
+#(h)
 #逻辑回归和LDA具有最高的正确率
+(i)
+#逻辑回归 Lag2与Lag1相关
+
 glm.fit=glm(Direction~Lag2:Lag1,data=Weekly,family=binomial,subset=train)
 glm.probs=predict(glm.fit,Weekly.0910,type="response")
 glm.pred=rep("Down",length(glm.probs))
@@ -59,15 +53,17 @@ glm.pred[glm.probs>0.5]="Up"
 Direction.0910=Direction[!train]
 table(glm.pred,Direction.0910)
 mean(glm.pred==Direction.0910)
-#LDALag2与Lag1相关
+#LDA Lag2与Lag1相关
 lda.fit=lda(Direction~Lag2:Lag1,data=Weekly,subset=train)
 lda.pred=predict(lda.fit,Weekly.0910)
 table(lda.pred$class,Direction.0910)
+mean(lda.pred$class==Direction.0910)
 #QDA Lag2与sqrt(abs(Lag2))
 qda.fit=qda(Direction~Lag2+sqrt(abs(Lag2)),data=Weekly,subset=train)
 qda.class=predict(qda.fit,Weekly.0910)$class
 table(qda.class,Direction.0910)
-#k=10
+mean(qda.class==Direction.0910)
+#K=10
 knn.pred=knn(train.X,test.X,train.Direction,k=10)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
@@ -76,7 +72,10 @@ knn.pred=knn(train.X,test.X,train.Direction,k=100)
 table(knn.pred,Direction.0910)
 mean(knn.pred==Direction.0910)
 #依旧是原来的LDA和逻辑回归正确率最高
-#11
+
+
+
+#Q11
 #(a)
 library(ISLR)
 summary(Auto)
@@ -88,7 +87,7 @@ Auto=data.frame(Auto,mpg01)
 cor(Auto[,-9])
 pairs(Auto)
 #cylinders, weight, displacement, horsepower 有很大的可能相关。
-#(c)
+#(C)
 train=(year%%2==0)
 test=!train
 Auto.train=Auto[train,]
@@ -118,10 +117,27 @@ set.seed(1)
 #k=1
 knn.pred=knn(train.X,test.X,train.mpg01,k=1)
 mean(knn.pred != mpg01.test)
-#k-5
 knn.pred=knn(train.X,test.X,train.mpg01,k=5)
 mean(knn.pred != mpg01.test)
-#k=10
 knn.pred=knn(train.X,test.X,train.mpg01,k=10)
 mean(knn.pred != mpg01.test)
-#k=5时效果最好
+#k=5时可能最好
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
