@@ -1,0 +1,225 @@
+---
+title: "The second homework"
+author: "饶芯媛"
+output: html_document
+---
+
+# 10.
+```{r}
+library(ISLR)
+summary(Weekly)
+#绘制散点矩阵图
+pairs(Weekly[,-9])
+#cor计算相关系数
+cor(Weekly[,-9])
+```
+## (a)
+从相关系数矩阵和散点矩阵图可以看出：滞后时间变量Lag1~Lag5之间没有显著性关系，但交易量Volume随时间Year不断有明显的增加具有一定的相关性。
+
+```{r}
+attach(Weekly)
+glm.fit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
+#建立逻辑斯蒂回归模型
+summary(glm.fit)
+```
+## (b)
+从P值来看，Lag2在统计上更显著，Pr(>|z|) =0.0296<0.05.
+
+```{r}
+glm.probs=predict(glm.fit,type="response")
+glm.pred=rep("Down",length(glm.probs))
+glm.pred[glm.probs>0.5]="Up"
+table(glm.pred,Direction)
+mean(glm.pred==Direction)
+```
+## (c)
+整体预测准确率为：
+$$ \frac{54+557}{54+48+430+557}=0.56 $$
+当预测weak增加时正确率为:
+$$ \frac{557}{557+48}=92.1% $$
+当预测weak减少时正确率为：
+$$ \frac{54}{430+54}=11.2% $$
+
+```{r}
+train=(Year<2009)
+#选择1990-2008年为训练集
+Weekly.0910=Weekly[!train,]
+#选择剩下年份为训练集
+glm.fit=glm(Direction~Lag2,data=Weekly,family=binomial,subset=train)
+#建立逻辑斯蒂回归模型
+glm.probs=predict(glm.fit,Weekly.0910,type="response")
+glm.pred=rep("Down",length(glm.probs))
+glm.pred[glm.probs>0.5]="Up"
+Direction.0910=Direction[!train]
+table(glm.pred,Direction.0910)
+mean(glm.pred==Direction.0910)
+```
+## (d)
+测试集中总体预测准确率为：
+$$ \frac{9+56}{9+5+34+56}=0.625 $$
+
+```{r}
+library(MASS)
+lda.fit=lda(Direction~Lag2,data=Weekly,subset=train)
+#建立LDA模型
+lda.pred=predict(lda.fit,Weekly.0910)
+table(lda.pred$class,Direction.0910)
+mean(lda.pred$class == Direction.0910)
+```
+## (e)
+LDA过程如上。
+
+```{r}
+qda.fit=qda(Direction~Lag2,data=Weekly,subset=train)
+#建立QDA模型
+qda.class=predict(qda.fit,Weekly.0910)$class
+table(qda.class,Direction.0910)
+mean(qda.class==Direction.0910)
+```
+## (f)
+QDA过程如上。
+
+```{r}
+library(class)
+train.X=as.matrix(Lag2[train])
+test.X=as.matrix(Lag2[!train])
+train.Direction=Direction[train]
+set.seed(1)
+knn.pred=knn(train.X,test.X,train.Direction,k=1)
+table(knn.pred,Direction.0910)
+mean(knn.pred==Direction.0910)
+```
+## (g)
+K=1的KNN过程如上。
+
+## (h)
+从预测准确率来看，逻辑斯蒂回归和LDA具有最高的正确率0.625.
+
+## (i)
+### 逻辑斯蒂回归 Lag2与Lag1相关：
+```{r}
+glm.fit=glm(Direction~Lag2:Lag1,data=Weekly,family=binomial,subset=train)
+glm.probs=predict(glm.fit,Weekly.0910,type="response")
+glm.pred=rep("Down",length(glm.probs))
+glm.pred[glm.probs>0.5]="Up"
+Direction.0910=Direction[!train]
+table(glm.pred,Direction.0910)
+mean(glm.pred==Direction.0910)
+```
+
+### LDA Lag2与Lag1相关：
+```{r}
+lda.fit=lda(Direction~Lag2:Lag1,data=Weekly,subset=train)
+lda.pred=predict(lda.fit,Weekly.0910)
+table(lda.pred$class,Direction.0910)
+mean(lda.pred$class==Direction.0910)
+```
+
+### QDA Lag2与sqrt(abs(Lag2))：
+```{r}
+qda.fit=qda(Direction~Lag2+sqrt(abs(Lag2)),data=Weekly,subset=train)
+qda.class=predict(qda.fit,Weekly.0910)$class
+table(qda.class,Direction.0910)
+mean(qda.class==Direction.0910)
+```
+
+### K=10：
+```{r}
+knn.pred=knn(train.X,test.X,train.Direction,k=10)
+table(knn.pred,Direction.0910)
+mean(knn.pred==Direction.0910)
+```
+
+### K=100：
+```{r}
+knn.pred=knn(train.X,test.X,train.Direction,k=100)
+table(knn.pred,Direction.0910)
+mean(knn.pred==Direction.0910)
+```
+综合比较预测准确率，依旧是原来的LDA和逻辑斯蒂回归正确率最高。
+
+
+# 11.
+```{r}
+library(ISLR)
+summary(Auto)
+attach(Auto)
+mpg01=rep(0,length(mpg))
+mpg01[mpg>median(mpg)]=1
+#1为中位数以上
+Auto=data.frame(Auto,mpg01)
+```
+## (a)
+已按照mpg中位数构建好0，1数据集。
+
+```{r}
+cor(Auto[,-9])
+pairs(Auto[,-9])
+boxplot(Auto[,-9])
+```
+
+## (b)
+可以看出cylinders, displacement, horsepower, weight与mpg01有很大的可能是相关的。 
+
+```{r}
+train=(year%%2==0)
+#按照年份进行分组
+test=!train
+Auto.train=Auto[train,]
+Auto.test=Auto[test,]
+mpg01.test=mpg01[test]
+```
+## (c)
+我们简单地把数据一分为二作为训练集和测试集，通过年份奇数偶数很容易做到。
+
+```{r}
+library(MASS)
+lda.fit=lda(mpg01~cylinders+displacement+horsepower+weight,data=Auto,subset=train)
+#建立LDA模型
+lda.pred=predict(lda.fit,Auto.test)
+mean(lda.pred$class!=mpg01.test)
+```
+## (d)
+LDA模型得到的测试误差为0.126.
+
+```{r}
+qda.fit=qda(mpg01~cylinders+displacement+horsepower+weight,data=Auto,subset=train)
+#建立QDA模型
+qda.pred=predict(qda.fit,Auto.test)
+mean(qda.pred$class!=mpg01.test)
+```
+## (e)
+QDA模型得到的测试误差为0.132.
+
+```{r}
+glm.fit=glm(mpg01~cylinders+displacement+horsepower+weight,data=Auto,family=binomial,subset=train)
+#建立逻辑斯蒂回归模型
+glm.probs=predict(glm.fit,Auto.test,type="response")
+glm.pred=rep(0,length(glm.probs))
+glm.pred[glm.probs>0.5]=1
+mean(glm.pred!=mpg01.test)
+```
+## (f)
+逻辑斯蒂回归模型得到的测试误差为0.121.
+
+## (g)
+```{r}
+library(class)
+train.X=cbind(cylinders,displacement,horsepower,weight)[train,]
+test.X=cbind(cylinders,displacement,horsepower,weight)[test,]
+train.mpg01=mpg01[train]
+set.seed(1)
+#k=1
+knn.pred=knn(train.X,test.X,train.mpg01,k=1) 
+mean(knn.pred != mpg01.test)
+#k=5
+knn.pred=knn(train.X,test.X,train.mpg01,k=5) 
+mean(knn.pred != mpg01.test) 
+#k=10
+knn.pred=knn(train.X,test.X,train.mpg01,k=10) 
+mean(knn.pred != mpg01.test) 
+```
+k=1时，模型得到的测试误差为0.154;
+k=5时，模型得到的测试误差为0.148;
+k=10时，模型得到的测试误差为0.154;
+比较测试误差发现k=5时，模型测试误差最小,KNN效果最好。

@@ -1,0 +1,128 @@
+---
+title: "0183605"
+author: "饶夏晴"
+date: "2021/4/7"
+output: html_document
+---
+
+# 8
+### (8.a)
+```{r}
+library(MASS)
+library(ISLR)
+library(car)
+attach(Auto)
+lm.fit<-lm(mpg~horsepower) 
+summary(lm.fit)
+```
+从回归系数的p值可以看出，horsepower对方程的贡献显著。预测变量和响应变量之间显著相关。$R^2$为0.6059。拟合模型中horsepower的系数为-0.157854，这表明预测变量和响应变量之间是负相关关系。
+```{r}
+predict(lm.fit,data.frame(horsepower=98),interval="confidence")
+```
+当horsepower值为98时，mpg的预测值为23.97308，相应的95%置信区间是（24.46708，24.96108）。
+
+### (8.b)
+```{r}
+plot(horsepower,mpg)
+abline(lm.fit,lwd=3,col="red")
+```
+
+### (8.c)
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+如果因变量与自变量线性相关，那么残差值与预测值就没有任何系统关联，但是从“Residuals vs Fitted”图中可以看出曲线关系，说明这个模型是不够精确的，不满足线性假定。从模型诊断图中可以看出，“正态Q-Q图”中图上的点基本在45度角的直线上，说明满足正态性假设。若满足不变方差假设，那么在“Scale-Location Graph”中，水平线周围的点应该随机分布，但是从我们的诊断图中可以看出，数据点集中在图像右侧，且左侧下方数据点很少。说明该图不满足同方差假定。从“residuals vs leverage”中可以看出，有部分点标准化残差大于2，是离群点。
+
+# 9
+### (9.a)
+```{r}
+pairs(Auto[1:9])
+```
+
+如散点图矩阵所示，mpg与cylinders ，displacement， horsepower 和weight都呈负相关关系，与acceleration，year，origin呈正相关。
+
+### (9.b)
+```{r}
+matrix<-cor(Auto[1:8],method=c('pearson','kendall','spearman'))
+round(matrix,3)
+```
+
+### (9.c)
+```{r}
+lm.fit2<-lm(mpg~cylinders+displacement+horsepower+weight+acceleration+year+origin) 
+summary(lm.fit2)
+```
+
+如summary所示，在0.05显著性水平下，displacement，weight，year，origin与响应变量具有显著关系。year变量的系数是0.750773，它表明year变量增加一个单位，其他预测变量保持不变时，预测mpg要增加0.750773个单位。
+
+### (9.d)
+```{r}
+plot(lm.fit2)
+```
+
+如果因变量与自变量线性相关，那么残差值与预测值就没有任何系统关联，从“Residuals vs Fitted”图中可以隐约看出较小的曲线关系。
+从模型诊断图中可以看出，“正态Q-Q图”中图上的点基本在45度角的直线上，说明满足正态性假设。
+若满足不变方差假设，那么在“Scale-Location Graph”中，水平线周围的点应该随机分布，从我们的诊断图中可以看出，基本满足不变方差假设。
+从图中看出有许多较大的离群点，比如325，389号数据。14号数据尽管标准化残差值是在（-1，2）之间的，但是它有非常大的权重，对模型产生较大影响。
+
+### (9.e)
+```{r}
+lm.fit3<-lm(mpg~displacement*weight+year*origin) 
+summary(lm.fit3)
+```
+
+如结果图所示，在0.05显著性水平下，displacement与weight，year与origin这两个交互项系数显著，说明存在统计显著的交互作用。
+
+### (9.f)
+```{r}
+lm.fit4<-lm(mpg~log(horsepower)+sqrt(horsepower)+I(horsepower)) 
+summary(lm.fit4)
+par(mfrow=c(2,2))
+plot(lm.fit4)
+```
+从拟合结果可以看出，RSE值为4.365，$R^2$值为0.6896，从“Residuals vs Fitted”图中可以隐约看出模型基本满足线性假定。从“Residuals vs leverage”图中可以看到有许多离群值，没有明显的强影响点。
+
+# 10
+### (10.a)
+```{r}
+attach(Carseats)
+lm.fit5<-lm(Sales~Price+Urban+US)
+summary(lm.fit5)
+```
+
+### (10.b)
+根据运行结果可以看出，Price与US这两个变量的系数是显著的，说明销量与这两个变量显著相关。且销量与价格是负相关关系，商场在美国销量会更高。销量与 商场是否在郊区无关。
+
+### (10.c)
+$Sales=13.043-0.054\times Price+\{{1.20\:US \atop 0\quad not}$
+
+### (10.d)
+根据Pr值可以看出，Price和USYES的p值小于0.05，可以拒绝零假设。
+
+### (10.e)
+```{r}
+lm.fit6<-lm(Sales~Price+US)
+summary(lm.fit6)
+```
+
+### (10.f)
+在保留四位小数的情况下，(a)和(e)中的$R^2$值相等，但是(e)中的Residual standard error更低一些。
+
+### (10.g)
+```{r}
+confint(lm.fit6)
+```
+### (10.h)
+```{r}
+plot(lm.fit6)
+```
+
+从“Residuals vs leverage”图中可以看出模型(e)有许多离群值。
+
+```{r}
+plot(lm.fit6,4)
+```
+
+观测点的帽子值大于帽子均值的2或3倍，可认为是高杠杆之点。图中所示，并没有高杠杆点。
