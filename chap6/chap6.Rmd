@@ -1,0 +1,1751 @@
+
+
+---
+title: "子集选择和压缩"
+author: "李峰"
+institute: "统计学院<br/>江西财经大学"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [xaringan-themer.css]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+    html_document:
+      mathjax: "http://example.com/MathJax.js"
+---
+
+
+
+```{r setup, include=FALSE, dev="CairoPNG"}
+library("Cairo")
+library("ElemStatLearn")
+library("mlr")
+library("ggplot2")
+library("ISLR")
+library("ggplot2")
+library("MASS")
+require("plotly")
+library("plotly")
+knitr::opts_chunk$set(dev="CairoPNG")
+set.seed(3)
+```
+
+```{r xaringan-themer, include = FALSE, warning = FALSE}
+library(xaringanthemer)
+style_solarized_light()
+
+```
+
+```{css, echo = FALSE}
+.math.inline {
+}
+```
+
+
+
+### 子集选择和压缩
+
+1. 子集选择
+
+2. 压缩
+
+3. PCR
+
+
+
+---
+
+## 回归分析的优点
+
+
+- 尽管简单，但是可解释性好，预测表现也不错
+
+- 进一步改善最小二乘法
+
+    - 提高预测准确率：尤其是 $p>n$ 的情况
+    
+    - 模型的可解释性：通过自动选择特征的方法剔除不相关的特征变量
+
+
+
+---
+
+## 三大类方法
+
+
+- 子集选择：stepwise, forward, backward等
+
+- 压缩法
+
+    - 把某些特征变量的系数压缩为0，也叫正则化（**regularization**）
+    
+    - 在降低方差的同时进行变量选择
+    
+- 降维法
+
+    - 把p个预测变量投影到m维子空间里
+    
+    - 得到m个预测变量的线性组合形式，再作为预测变量进入回归方程
+
+
+
+
+
+---
+
+class: center, middle
+
+## 1. 子集选择
+
+
+
+---
+
+## 子集选择
+
+- 最优子集选择
+
+    - 可能的组合数非常多（ $2^p$个）
+    
+    - 如何进行模型的选择
+    
+         - fit stastistics: $C_p$, AIC, BIC, adjusted $R^2$
+         
+         - CV
+    
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+data(Hitters, package = "ISLR")
+sum(is.na(Hitters))
+sum(is.na(Hitters$Salary))
+Hitters = na.omit(Hitters)
+sum(is.na(Hitters))
+names(Hitters)
+```
+
+
+
+---
+
+
+## 子集选择
+
+- **leaps**包
+
+    - 默认最多变量数为8
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+library(leaps)
+fit_all = regsubsets(Salary ~ ., Hitters)
+summary(fit_all)
+```
+
+
+---
+
+
+## 子集选择
+
+- **leaps**包
+
+    - 也可以改为最大变量个数
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_all = regsubsets(Salary ~ ., data = Hitters, nvmax = 19)
+fit_all_sum = summary(fit_all)
+fit_all_sum
+```
+
+
+---
+
+
+## 子集选择
+
+- **leaps**包
+
+    - 模型拟合标准
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+names(fit_all_sum)
+fit_all_sum$bic
+```
+
+
+---
+
+
+## 子集选择
+
+- - **leaps**包
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+par(mfrow = c(2, 2))
+plot(fit_all_sum$rss, xlab = "Number of Variables", ylab = "RSS", type = "b")
+
+plot(fit_all_sum$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "b")
+best_adj_r2 = which.max(fit_all_sum$adjr2)
+points(best_adj_r2, fit_all_sum$adjr2[best_adj_r2],
+       col = "red",cex = 2, pch = 20)
+
+plot(fit_all_sum$cp, xlab = "Number of Variables", ylab = "Cp", type = 'b')
+best_cp = which.min(fit_all_sum$cp)
+points(best_cp, fit_all_sum$cp[best_cp], 
+       col = "red", cex = 2, pch = 20)
+
+plot(fit_all_sum$bic, xlab = "Number of Variables", ylab = "BIC", type = 'b')
+best_bic = which.min(fit_all_sum$bic)
+points(best_bic, fit_all_sum$bic[best_bic], 
+       col = "red", cex = 2, pch = 20)
+```
+
+
+---
+
+
+## 子集选择
+
+- fit statistics：对模型复杂度进行惩罚
+
+$$
+C_p = p + \frac{(S_p^2-\sigma^2)(n-p)}{\sigma^2}
+$$
+
+$$
+adjR^2= 1- \frac{RSS/(n-d-1)}{TSS/(n-1)}
+$$
+
+$$
+AIC = \frac{1}{n\hat{\sigma}^2}(RSS+2d\hat{\sigma}^2)
+$$
+- L是估计模型似然函数的极大值
+
+$$
+BIC = \frac{1}{n}(RSS+log(n)d\hat{\sigma}^2)
+$$
+
+- AIC和 $C_p$是等价的（二者成比例），但是BIC要更严格
+
+
+---
+
+
+## 子集选择
+
+- forward
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_fwd = regsubsets(Salary ~ ., data = Hitters, nvmax = 19, method = "forward")
+fit_fwd_sum = summary(fit_fwd)
+```
+
+- backward
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_bwd = regsubsets(Salary ~ ., data = Hitters, nvmax = 19, method = "backward")
+fit_bwd_sum = summary(fit_bwd)
+```
+
+---
+
+
+## 子集选择
+
+- 不同方法选择出来的变量会有差异
+
+    - 采用forward或backward的优势是什么？
+    
+    - 如果 $n<p$， 哪种方法合适？
+    
+    - forward或backward能否保证得到在 $2^p$个模型里找到最优集合？
+
+
+
+---
+
+
+## 子集选择
+
+- 不同方法选择出来的变量会有差异
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+coef(fit_fwd, 7)
+coef(fit_bwd, 7)
+coef(fit_all, 7)
+```
+
+
+
+---
+
+
+## 子集选择
+
+- 挑一个 $C_p$最小的看看
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_bwd_sum = summary(fit_bwd)
+which.min(fit_bwd_sum$cp)
+coef(fit_bwd, which.min(fit_bwd_sum$cp))
+```
+
+
+
+---
+
+
+## 子集选择
+
+- 挑一个AIC最小的看看
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit = lm(Salary ~ ., data = Hitters)
+fit_aic_back = step(fit, trace = FALSE)
+coef(fit_aic_back)
+```
+
+
+
+
+
+---
+
+
+## 子集选择
+
+- 挑一个BIC最小的看看
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_bwd_sum = summary(fit_bwd)
+which.min(fit_bwd_sum$bic)
+coef(fit_bwd, which.min(fit_bwd_sum$cp))
+```
+
+
+---
+
+
+## 子集选择
+
+- CV
+
+    - 5：5
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+set.seed(42)
+num_vars = ncol(Hitters) - 1
+trn_idx = sample(c(TRUE, FALSE), nrow(Hitters), rep = TRUE)
+tst_idx = (!trn_idx)
+
+fit_all = regsubsets(Salary ~ ., data = Hitters[trn_idx, ], nvmax = num_vars)
+test_mat = model.matrix(Salary ~ ., data = Hitters[tst_idx, ])
+
+test_err = rep(0, times = num_vars)
+for (i in seq_along(test_err)) {
+  coefs = coef(fit_all, id = i)
+  pred = test_mat[, names(coefs)] %*% coefs
+  test_err[i] <- sqrt(mean((Hitters$Salary[tst_idx] - pred) ^ 2))
+}
+```
+
+
+
+---
+
+
+## 子集选择
+
+- CV
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+# test_err
+plot(test_err, type='b', ylab = "Test Set RMSE", xlab = "Number of Predictors")
+```
+
+
+
+---
+
+
+## 子集选择
+
+- 在测试集上表现好的模型什么样？
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+which.min(test_err)
+coef(fit_all, which.min(test_err))
+```
+
+
+
+---
+
+
+## 子集选择
+
+- 5 folds
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+predict.regsubsets = function(object, newdata, id, ...) {
+  
+  form  = as.formula(object$call[[2]])
+  mat   = model.matrix(form, newdata)
+  coefs = coef(object, id = id)
+  xvars = names(coefs)
+  
+  mat[, xvars] %*% coefs
+}
+rmse = function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+
+```
+
+---
+
+
+## 子集选择
+
+- 5 folds
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+num_folds = 5
+num_vars  = 19
+set.seed(1)
+folds = caret::createFolds(Hitters$Salary, k = num_folds)
+fold_error = matrix(0, nrow = num_folds, ncol = num_vars, 
+                    dimnames = list(paste(1:5), paste(1:19)))
+
+for(j in 1:num_folds) {
+  
+  train_fold    = Hitters[-folds[[j]], ]
+  validate_fold = Hitters[ folds[[j]], ]
+
+  
+  best_fit = regsubsets(Salary ~ ., data = train_fold, nvmax = 19)
+  
+  for (i in 1:num_vars) {
+    
+    pred = predict(best_fit, validate_fold, id = i)
+    
+    fold_error[j, i] = rmse(actual = validate_fold$Salary,
+                            predicted = pred)
+  }
+  
+}
+
+cv_error = apply(fold_error, 2, mean)
+```
+
+
+
+
+
+
+
+---
+
+
+## 子集选择
+
+- 5 folds
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+# cv_error
+
+plot(cv_error, type='b', ylab = "Corss-Validated RMSE", xlab = "Number of Predictors")
+
+
+```
+
+
+
+
+
+---
+
+
+## 子集选择
+
+- 5 folds
+
+    - 最好的模型什么样
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+fit_all = regsubsets(Salary ~ ., data = Hitters, nvmax = num_vars)
+coef(fit_all, which.min(cv_error))
+
+```
+
+
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 压缩什么？
+
+<img src=lm.png alt="" width="500" height="300" align="bottom" />
+
+
+
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 压缩什么？
+
+<img src=ridge2.png alt="" width="500" height="300" align="bottom" />
+
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 压缩什么？
+
+<img src=ridge3.png alt="" width="500" height="300" align="bottom" />
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 为什么要压缩？
+
+     - 秋名山
+
+<img src=qiumingshan.png alt="" width="500" height="400" align="bottom" />
+
+
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 为什么要压缩？
+
+     - 秋名山
+
+<img src=ridge.png alt="" width="500" height="400" align="bottom" />
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 为什么要压缩？
+
+     - "压缩"后的“秋名山”
+
+<img src=highspeed.jpg alt="" width="500" height="400" align="bottom" />
+
+---
+
+## 压缩：正则化
+
+- 为什么要压缩？
+
+     - 山区地带的高速公路，弯道最小曲率半径为250米。
+
+<img src=ridge4.png alt="" width="500" height="400" align="bottom" />
+
+
+
+
+
+---
+
+## 压缩：正则化
+
+- 为什么要压缩？
+
+     - 做变量选择时考虑的是减少变量个数
+     
+     - 对岭回归来说，不改变变量个数，但是压低变量参数
+     
+     - 对lasso来说，把一部分变量的参数压缩到0
+     
+- 如何理解压缩？
+
+     - 数据中存在噪音（强影响点、X方向上的异常值、Y方向上的异常值）
+     
+     - 为模型参数估计增加一个先验知识，先验知识会引导损失函数最小值过程朝着约束方向迭代
+
+
+
+
+
+---
+
+## 岭回归
+
+$$
+f(X) = \sum_i(x_i\theta_i) + \epsilon = X\theta^T + \epsilon
+$$
+
+$$
+P(Y_i|X_i, \theta) = \frac{1}{\delta\sqrt{2\pi}} \exp(-\frac{\|f(X_i) - Y_i\|^2}{2\delta^2})
+$$
+
+
+$$
+P(Y|X,\theta)= \prod_i\frac{1}{\delta\sqrt{2\pi}} \exp(-\frac{\|f(X_i) - Y_i\|^2}{2\delta^2}
+$$
+
+$$
+\theta^* = argmax_{\theta} \left(\prod_i\frac{1}{\epsilon\sqrt{2\pi}} \exp(-\frac{\|f(X_i) - Y_i\|^2}{2\delta^2})\right)
+$$
+
+
+$$
+\theta^* =argmin_{\theta} \left(\sum_i \|f(X_i) - Y_i\|^2 \right)  
+$$
+
+---
+
+## 岭回归
+
+
+$$
+P(\theta) = \frac{1}{\delta\sqrt{2\pi}} \exp(-\frac{(\theta - \mu)^2}{2\delta^2})
+$$
+
+
+$$
+log(P(\theta)) = -log(\delta\sqrt{2\pi}) (-\frac{(\theta - \mu)^2}{2\delta^2})
+$$
+令 $\mu=0$
+
+$$
+log(P(\theta)) = -log(\delta\sqrt{2\pi}) (-\frac{\theta^2}{2\delta^2})
+$$
+
+令 $\lambda = 1/2\sigma^2$
+
+
+$$
+log(P(\theta)) = -log(\delta\sqrt{2\pi})-\lambda\theta^2
+$$
+---
+
+## 岭回归
+
+$$
+\theta^* =argmin_{\theta} (\sum( y_i - \beta_0 - \sum \beta_j x) ^ 2 + \lambda \sum \beta_j^2)
+$$
+
+
+- 截距不会受惩罚 
+
+- 岭回归的尺度会变化，回归模型里是尺度不变的，**glmnet()**会在内部处理，并用原始数据报告系数
+
+
+
+
+
+
+
+
+
+---
+
+## 岭回归
+
+- 模拟一个数据
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+# 模拟数据
+x <- rnorm(100, 0, 1)
+y <- rnorm(100, 0, 1)
+z <- 2 * x + 3 * y +runif(1)
+df <- data.frame(cbind (x, y ,z))
+
+# 计算系数
+fit <- lm (z~. ,data = df)
+fit$coefficients
+
+# 系数隔栅
+b1 <- rep(seq(-4, 5, 1), each=10)
+b2 <- rep(seq(-4, 5, 1), 10)
+
+
+# 计算SSE函数
+comsse <- function(b1, b2){
+  sse <- rep(0,length(b1))
+  for (i in 1:length(sse)) {
+           error <- z - x * b1[i] -y * b2[i]
+           sse[i] <- sum(error^2)
+  }
+  return(sse)
+}
+# 得到b1、b2和SSE关系
+sse <- comsse(b1, b2)
+l2 <-  b1^2+b2^2
+l1 <- abs(b1)+abs(b2)
+df2 <- data.frame(cbind(b1, b2, sse, l2, l1))
+
+
+```
+
+
+---
+
+## 岭回归
+
+- 模拟一个数据
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+
+# 3D隔栅图
+SSE <- matrix(sse, 10, 10)
+lattice::wireframe(SSE, xlab = "beta1", ylab = "beta2", drape = TRUE)
+
+
+```
+
+
+
+
+---
+
+## 压缩
+
+- 岭回归
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+# 2D地形图 L2
+ggplot(df2) +
+  geom_tile(aes(x=b1,y=b2,fill=sse)) +
+  geom_point(aes(x = b1, y = b2), shape = 20, size = .05, alpha = .5) +
+  geom_contour(aes(b1, b2, z = sse), col = "green", bins=50) + 
+  scale_fill_gradientn("Z",colours = terrain.colors(10)) +
+  geom_contour(aes(b1, b2, z = l2), col = "red", bins=20) + 
+  geom_hline(aes(yintercept=0)) + 
+  geom_vline(aes(xintercept=0)) + 
+  xlim(-5,6) +
+  ylim(-5,6)
+```
+
+
+
+
+---
+
+## 压缩
+
+- 岭回归
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+fit = lm(Salary ~ ., Hitters)
+coef(fit)
+sum(abs(coef(fit)[-1]))
+sum(coef(fit)[-1] ^ 2)
+```
+
+
+
+
+
+
+---
+
+## 岭回归
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(glmnet)
+par(mfrow = c(1, 2))
+fit_ridge = glmnet(X, y, alpha = 0)
+plot(fit_ridge)
+plot(fit_ridge, xvar = "lambda", label = TRUE)
+```
+
+
+
+---
+
+## 岭回归
+
+- 给了很多结果供选择
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(glmnet)
+dim(coef(fit_ridge))
+coef(fit_ridge)
+which.min(fit_ridge$lambda)
+```
+
+
+
+
+---
+
+## 岭回归
+
+- lambda和L2的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+fit_ridge_cv = cv.glmnet(X, y, alpha = 0)
+l2 <-  vector(mode='numeric',length=length(fit_ridge_cv$lambda))
+lam <- fit_ridge_cv$lambda
+for (i in 1:length(l2)){
+  l2[i] <- sum(coef(fit_ridge_cv, s =lam[i] )[-1] ^ 2)
+}
+ll <- l2 * lam
+mse <- fit_ridge_cv$cvm
+
+
+```
+
+
+---
+
+## 岭回归
+
+- lambda和L2的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam, l2)
+
+```
+
+
+
+---
+
+## 岭回归
+
+- lambda和 $\lambda\sum\theta^2$的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam, ll)
+
+```
+
+
+---
+
+## 岭回归
+
+- lambda和mse的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam,mse)
+
+```
+
+---
+
+## 岭回归
+
+- 观察 $\lambda\sum\theta^2$和mse的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(ll,mse)
+
+```
+
+---
+
+## 岭回归
+
+- 如何选择
+
+    - 岭回归的CV：默认10折
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+fit_ridge_cv = cv.glmnet(X, y, alpha = 0)
+plot(fit_ridge_cv)
+```
+
+
+
+
+---
+
+## 岭回归
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - Krstajic, et al (2014) 
+
+> Breiman et al. [25] have found in the case of selecting optimal tree size for classification tree models that the tree size with minimal cross-validation error generates a model which generally overfits. Therefore, in Section 3.4.3 of their book Breiman et al. [25] define the one standard error rule (1 SE rule) for choosing an optimal tree size, and they implement it throughout the book. In order to calculate the standard error for single V-fold cross- validation, accuracy needs to be calculated for each fold, and the standard error is calculated from V accuracies from each fold. Hastie et al. [4] define the 1 SE rule as selecting the most parsimonious model whose error is no more than one standard error above the error of the best model, and they suggest in several places using the 1 SE rule for general cross-validation use. The main point of the 1 SE rule, with which we agree, is to choose the simplest model whose accuracy is comparable with the best model.
+
+
+
+---
+
+## 岭回归
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - 默认MSE最小值一个标准差的lambda
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+
+coef(fit_ridge_cv)
+
+```
+
+
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - 1-SE lambda
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+sum(coef(fit_ridge_cv, s = "lambda.1se")[-1] ^ 2)
+```
+
+
+
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - 1-SE lambda
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+predict(fit_ridge_cv, X)
+
+```
+
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - 1-SE lambda
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+mean((y - predict(fit_ridge_cv, X)) ^ 2)
+
+```
+
+
+
+
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - minimum lambda
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+coef(fit_ridge_cv, s = "lambda.min")
+
+
+```
+
+
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - minimum lambda
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+sum(coef(fit_ridge_cv, s = "lambda.min")[-1] ^ 2)
+
+```
+
+
+---
+
+## 岭回归
+
+
+- `cv.glmnet()` 返回“1-SE lambda”和“minimum lambda”两个结果
+
+    - CV-RMSE
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+sqrt(fit_ridge_cv$cvm[fit_ridge_cv$lambda == fit_ridge_cv$lambda.min])
+sqrt(fit_ridge_cv$cvm[fit_ridge_cv$lambda == fit_ridge_cv$lambda.1se]) 
+```
+
+
+
+
+---
+
+## lasso
+
+- 拉普拉斯分布
+
+$$
+P(\theta_i) = \frac{\lambda}{2} \exp(-\lambda|\theta_i|)
+$$
+
+
+<img src=laplace.jpg alt="" width="500" height="400" align="bottom" />
+
+
+
+
+
+---
+
+## lasso
+
+- 拉普拉斯分布
+
+
+$$
+\theta^* =argmin_{\theta} (\sum( y_i - \beta_0 - \sum\beta_j x) ^ 2 + \lambda \sum|\beta_j|)
+$$
+
+
+
+
+
+
+
+
+---
+
+## lasso
+
+- 模拟数据
+
+
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+
+# 模拟数据
+x <- rnorm(100, 0, 1)
+y <- rnorm(100, 0, 1)
+z <- 2 * x + 3 * y +runif(1)
+df <- data.frame(cbind (x, y ,z))
+
+# 计算系数
+fit <- lm (z~. ,data = df)
+fit$coefficients
+
+# 系数隔栅
+b1 <- rep(seq(-4, 5, 1), each=10)
+b2 <- rep(seq(-4, 5, 1), 10)
+
+
+# 计算SSE函数
+comsse <- function(b1, b2){
+  sse <- rep(0,length(b1))
+  for (i in 1:length(sse)) {
+           error <- z - x * b1[i] -y * b2[i]
+           sse[i] <- sum(error^2)
+  }
+  return(sse)
+}
+# 得到b1、b2和SSE关系
+sse <- comsse(b1, b2)
+l2 <-  b1^2+b2^2
+l1 <- abs(b1)+abs(b2)
+df2 <- data.frame(cbind(b1, b2, sse, l2, l1))
+
+ggplot(df2) +
+  geom_tile(aes(x=b1,y=b2,fill=sse)) +
+  geom_point(aes(x = b1, y = b2), shape = 20, size = .05, alpha = .5) +
+  geom_contour(aes(b1, b2, z = sse), col = "green", bins=50) + 
+  scale_fill_gradientn("Z",colours = terrain.colors(10)) +
+  geom_contour(aes(b1, b2, z = l1), col = "red", bins=20) + 
+  geom_hline(aes(yintercept=0)) + 
+  geom_vline(aes(xintercept=0)) + 
+  xlim(-5,6) +
+  ylim(-5,6)
+
+```
+
+
+
+
+
+
+---
+
+## lasso
+
+- 同样使用**glmnet()**，只是 $\alpha$值为1
+
+- 尺度也会发生变化，有些系数之和被压缩为0
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+par(mfrow = c(1, 2))
+fit_lasso = glmnet(X, y, alpha = 1)
+plot(fit_lasso)
+plot(fit_lasso, xvar = "lambda", label = TRUE)
+```
+
+
+
+
+
+---
+
+## lasso
+
+- 给了很多结果供选择
+
+```{r echo = FALSE, message= FALSE, fig.height=5, fig.width=10}
+library(glmnet)
+dim(coef(fit_lasso))
+coef(fit_lasso)
+which.min(fit_lasso$lambda)
+```
+
+
+
+
+---
+
+## lasso
+
+- lambda和L1的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+fit_lasso_cv = cv.glmnet(X, y, alpha = 1)
+l1 <-  vector(mode='numeric',length=length(fit_lasso_cv$lambda))
+lam <- fit_lasso_cv$lambda
+for (i in 1:length(l1)){
+  l1[i] <- sum(coef(fit_lasso_cv, s =lam[i] )[-1] ^ 2)
+}
+ll <- l1 * lam
+mse <- fit_lasso_cv$cvm
+
+
+```
+
+
+---
+
+## lasso
+
+- lambda和L1的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam, l1)
+
+```
+
+
+
+
+---
+
+## lasso
+
+- lambda和 $\lambda\sum|\theta|$的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam, ll)
+
+```
+
+
+---
+
+## lasso
+
+- lambda和mse的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(lam,mse)
+
+```
+
+---
+
+## lasso
+
+- 观察 $\lambda\sum|\theta|$和mse的关系
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(ll,mse)
+
+```
+
+
+
+
+
+---
+
+## lasso
+
+- CV
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+X = model.matrix(Salary ~ ., Hitters)[, -1]
+y = Hitters$Salary
+fit_lasso_cv = cv.glmnet(X, y, alpha = 1)
+plot(fit_lasso_cv)
+
+```
+
+
+
+
+
+
+
+---
+
+## lasso
+
+- 变量的挑选
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+sum(coef(fit_lasso_cv, s = "lambda.min")[-1] ^ 2)
+```
+
+
+
+
+
+---
+
+## lasso
+
+- 变量的挑选
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+predict(fit_lasso_cv, X, s = "lambda.min")
+```
+
+
+
+---
+
+## lasso
+
+- 变量的挑选
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+coef(fit_lasso_cv, s = "lambda.1se")
+```
+
+
+---
+
+## lasso
+
+- 变量的挑选
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+sum(coef(fit_lasso_cv, s = "lambda.1se")[-1] ^ 2)
+```
+
+
+
+
+---
+
+## lasso
+
+- 变量的挑选
+
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+predict(fit_lasso_cv, X)
+```
+
+
+
+
+---
+
+
+
+## lasso
+
+- 变量的挑选
+    
+    - CV-RMSE
+
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+sqrt(fit_lasso_cv$cvm[fit_lasso_cv$lambda == fit_lasso_cv$lambda.min])
+sqrt(fit_lasso_cv$cvm[fit_lasso_cv$lambda == fit_lasso_cv$lambda.1se]) 
+```
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 正则化可以缩小系数，也可以把某些系数设置为0，还能有效处理 $p > n$的情况
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+set.seed(1234)
+n = 1000
+p = 5500
+X = replicate(p, rnorm(n = n))
+beta = c(1, 1, 1, rep(0, 5497))
+z = X %*% beta
+prob = exp(z) / (1 + exp(z))
+y = as.factor(rbinom(length(z), size = 1, prob = prob))
+
+```
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 正则化可以缩小系数，也可以把某些系数设置为0，还能有效处理 $p > n$的情况
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+glm(y ~ X, family = "binomial")
+
+```
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 用lasso来做一个logistic回归
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+library(glmnet)
+fit_cv = cv.glmnet(X, y, family = "binomial", alpha = 1)
+plot(fit_cv)
+
+```
+
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 只有生成的前三个预测变量才是真正重要的，希望模型能发现......
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+head(coef(fit_cv), n = 10)
+```
+
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 只有生成的前三个预测变量才是真正重要的，希望模型能发现......
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+fit_1se = glmnet(X, y, family = "binomial", lambda = fit_cv$lambda.1se)
+which(as.vector(as.matrix(fit_1se$beta)) != 0)
+
+```
+
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 前三个变量在其他所有无关变量前进入模型
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+par(mfrow = c(1, 2))
+plot(glmnet(X, y, family = "binomial"))
+plot(glmnet(X, y, family = "binomial"), xvar = "lambda")
+
+```
+
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 但是`cv.glmnet()`不能计算分类的预测精度
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+fit_cv$lambda.min
+fit_cv$lambda.1se
+
+```
+
+
+
+---
+
+## 讨论过的 $p > n$ 的问题
+
+- 但是`cv.glmnet()`不能计算分类的预测精度
+
+- 使用**caret**包
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+library(caret)
+cv_5 = trainControl(method = "cv", number = 5)
+lasso_grid = expand.grid(alpha = 1, 
+                         lambda = c(fit_cv$lambda.min, fit_cv$lambda.1se))
+#lasso_grid
+sim_data = data.frame(y, X)
+fit_lasso = train(
+  y ~ ., data = sim_data,
+  method = "glmnet",
+  trControl = cv_5,
+  tuneGrid = lasso_grid
+)
+fit_lasso$results
+
+```
+
+
+
+
+---
+
+## 弹性网络
+
+- 综合了ridge和lasso
+
+    - 如果 $\alpha = 1$，就是lasso
+    
+    - 如果 $\alpha = 0$，就是ridge
+    
+    - 如果 $<0\alpha<1$，就是elnet
+
+
+$$
+\sum\left( y_i - \beta_0 - \sum\beta_j X    \right) ^ 2 + \lambda\left[(1-\alpha)||\beta||_2^2/2 + \alpha ||\beta||_1\right]
+$$
+
+
+
+
+
+---
+
+## 弹性网络
+
+- 允许`caret`为我们选择调整参数 $\alpha$。
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+set.seed(42)
+cv_5 = trainControl(method = "cv", number = 5)
+hit_elnet = train(
+  Salary ~ ., data = Hitters,
+  method = "glmnet",
+  trControl = cv_5
+)
+
+hit_elnet
+```
+
+---
+
+## 弹性网络
+
+- 调整`tunelength`，允许`caret`搜索10个 $\alpha$和10个 $\lambda$
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+hit_elnet_int = train(
+  Salary ~ . ^ 2, data = Hitters,
+  method = "glmnet",
+  trControl = cv_5,
+  tuneLength = 10
+)
+
+```
+
+
+
+
+---
+
+## 弹性网络
+
+- 挑选其中最好的
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+get_best_result = function(caret_fit) {
+  best = which(rownames(caret_fit$results) == rownames(caret_fit$bestTune))
+  best_result = caret_fit$results[best, ]
+  rownames(best_result) = NULL
+  best_result
+}
+get_best_result(hit_elnet_int)
+
+```
+
+
+
+
+---
+
+class: center, middle
+
+## 3. 主成分回归
+
+
+---
+
+## PCR
+
+- 优点：降维、避免多重共线性和过拟合
+
+- 缺点：可解释性差，不能用于变量选择
+
+- **pls**包
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+require(pls)
+data("Boston", package = "MASS")
+# Split the data into training and test set
+set.seed(123)
+training.samples <- Boston$medv %>%
+  createDataPartition(p = 0.8, list = FALSE)
+train.data  <- Boston[training.samples, ]
+test.data <- Boston[-training.samples, ]
+model <- train(
+  medv~., data = train.data, method = "pcr",
+  scale = TRUE,
+  trControl = trainControl("cv", number = 10),
+  tuneLength = 10
+  )
+
+```
+
+
+---
+
+## PCR
+
+- 通过交叉验证选择主成分的个数
+
+- 主成分的个数是需要**tuning**的参数
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+plot(model)
+model$bestTune
+```
+
+
+
+
+---
+
+## PCR
+
+- 结果
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+summary(model$finalModel)
+
+```
+
+
+
+
+---
+
+## PCR
+
+- 在测试集上进行检验
+
+
+```{r echo = TRUE, message= FALSE, fig.height=5, fig.width=10}
+
+predictions <- model %>% predict(test.data)
+# Model performance metrics
+data.frame(
+  RMSE = caret::RMSE(predictions, test.data$medv),
+  Rsquare = caret::R2(predictions, test.data$medv)
+)
+
+```
+
+
+
+
+
+
+
+
+
+
+---
+
+class: center, middle
+
+# 谢谢
+
+本幻灯片由 R 包 [**xaringan**](https://github.com/yihui/xaringan) 生成；
